@@ -78,6 +78,10 @@ import { ProductsModule } from './modules/products/products.module';
           host: config.get('REDIS_HOST', 'localhost'),
           port: config.get<number>('REDIS_PORT', 6379),
           password: config.get('REDIS_PASSWORD') || undefined,
+          lazyConnect: true,
+          enableOfflineQueue: false,
+          retryStrategy: () => null, // don't crash if Redis unavailable at startup
+          reconnectOnError: () => false,
         },
         defaultJobOptions: {
           attempts: 3,
