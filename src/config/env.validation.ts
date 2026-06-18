@@ -26,16 +26,16 @@ export const envValidationSchema = Joi.object({
 
   HASH_SALT: Joi.number().default(10),
 
-  GOOGLE_CLIENT_ID: Joi.string().optional(),
-  GOOGLE_CLIENT_SECRET: Joi.string().optional(),
-  GOOGLE_CALLBACK_URL: Joi.string().optional(),
+  GOOGLE_CLIENT_ID: Joi.string().allow('').optional(),
+  GOOGLE_CLIENT_SECRET: Joi.string().allow('').optional(),
+  GOOGLE_CALLBACK_URL: Joi.string().allow('').optional(),
 
-  STRIPE_SECRET_KEY: Joi.string().optional(),
-  STRIPE_WEBHOOK_SECRET: Joi.string().optional(),
+  STRIPE_SECRET_KEY: Joi.string().allow('').optional(),
+  STRIPE_WEBHOOK_SECRET: Joi.string().allow('').optional(),
 
-  SMTP_HOST: Joi.string().optional(),
+  SMTP_HOST: Joi.string().allow('').optional(),
   SMTP_PORT: Joi.number().optional(),
-  SMTP_USER: Joi.string().optional(),
-  SMTP_PASS: Joi.string().optional(),
-  EMAIL_FROM: Joi.string().optional(),
+  SMTP_USER: Joi.string().allow('').optional(),
+  SMTP_PASS: Joi.string().allow('').optional(),
+  EMAIL_FROM: Joi.string().allow('').optional(),
 });

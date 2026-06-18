@@ -27,9 +27,10 @@ export class StripeService {
   private readonly stripe: Stripe;
 
   constructor(private readonly config: ConfigService) {
-    this.stripe = new Stripe(config.get<string>('STRIPE_SECRET_KEY'), {
-      apiVersion: '2025-08-27.basil',
-    });
+    const key = config.get<string>('STRIPE_SECRET_KEY');
+    if (key) {
+      this.stripe = new Stripe(key, { apiVersion: '2025-08-27.basil' });
+    }
   }
 
   // ─── Customers ──────────────────────────────────────────────────────────

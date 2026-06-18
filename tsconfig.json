@@ -1,6 +1,5 @@
 {
   "compilerOptions": {
-    "types": ["jest", "node"],
     "module": "commonjs",
     "declaration": true,
     "removeComments": true,
