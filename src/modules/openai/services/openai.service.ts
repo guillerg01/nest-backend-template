@@ -27,12 +27,13 @@ export interface TranscriptionOptions {
 @Injectable()
 export class OpenAIService {
   private readonly logger = new Logger(OpenAIService.name);
-  private readonly client: OpenAI;
+  private client: OpenAI;
 
   constructor(private readonly config: ConfigService) {
-    this.client = new OpenAI({
-      apiKey: config.get<string>('OPENAI_API_KEY'),
-    });
+    const apiKey = config.get<string>('OPENAI_API_KEY');
+    if (apiKey) {
+      this.client = new OpenAI({ apiKey });
+    }
   }
 
   // ─── Chat Completions ─────────────────────────────────────────────────────
