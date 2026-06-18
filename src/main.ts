@@ -51,7 +51,7 @@ async function bootstrap() {
 
   // ─── Global prefix ────────────────────────────────────────────────────────
   app.setGlobalPrefix('api/v1', {
-    exclude: ['/health', '/docs', '/queues(.*)'], // Don't prefix these
+    exclude: ['/health', '/docs'], // Don't prefix these
   });
 
   // ─── Swagger (dev/staging only) ───────────────────────────────────────────
@@ -88,7 +88,7 @@ async function bootstrap() {
   logger.log(`🚀 Running: http://localhost:${port}/api/v1`);
   if (process.env.NODE_ENV !== 'production') {
     logger.log(`📚 Swagger: http://localhost:${port}/docs`);
-    logger.log(`📊 Queues:  http://localhost:${port}/queues`);
+
   }
 }
 

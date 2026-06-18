@@ -6,8 +6,6 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { BullModule } from '@nestjs/bullmq';
-import { BullBoardModule } from '@bull-board/nestjs';
-import { ExpressAdapter } from '@bull-board/express';
 import { LoggerModule } from 'nestjs-pino';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 
@@ -88,12 +86,6 @@ import { ProductsModule } from './modules/products/products.module';
           removeOnFail: { count: 200 },
         },
       }),
-    }),
-
-    // ─── Bull Board UI at /queues (secure this in production!) ───────────────
-    BullBoardModule.forRoot({
-      route: '/queues',
-      adapter: ExpressAdapter,
     }),
 
     // ─── Rate Limiting ────────────────────────────────────────────────────────
