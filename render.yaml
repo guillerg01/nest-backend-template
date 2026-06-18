@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: nest-backend-template
+    runtime: node
+    plan: free
+    buildCommand: npm ci --registry https://registry.npmjs.org && npm run build
+    startCommand: node dist/main
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      # Copy these from your .env.example and set values in Render dashboard:
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+
+databases:
+  - name: nest-backend-postgres
+    plan: free
+    databaseName: nest_backend
+    user: nest_backend
+
+  # Redis: add manually in Render dashboard → New Redis → link via REDIS_URL
