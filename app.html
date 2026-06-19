@@ -364,17 +364,18 @@ input.inp:focus,textarea.inp:focus{outline:none;border-color:var(--accent)}
 </script>
 
 <script>
-// ── State (var to avoid TDZ issues) ──────────────────────────
-var BASE_URL = localStorage.getItem('baseUrl') || 'http://localhost:3000';
-var TOKEN    = '';
-var ME       = null;
-var socket   = null;
-var activeRoom = null;
-var isRegMode  = false;
-var typingTmr  = null;
-var requests   = [];    // debug log
-var reqFilter  = 'all';
+// ── State ─────────────────────────────────────────────────────
+var BASE_URL    = localStorage.getItem('baseUrl') || 'http://localhost:3000';
+var TOKEN       = '';
+var ME          = null;
+var socket      = null;
+var activeRoom  = null;
+var isRegMode   = false;
+var typingTmr   = null;
+var reqFilter   = 'all';
 var selectedReq = null;
+// requests on window so it's always reachable regardless of iframe/sandbox scope
+window._reqs = window._reqs || [];
 
 // ── Init ──────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', function() {
@@ -415,7 +416,7 @@ async function api(method, path, body) {
 
   var t0 = Date.now();
   var entry = { method: method, url: url, path: path, reqBody: body || null, status: '…', ms: 0, resBody: null, error: null };
-  requests.unshift(entry);
+  window._reqs.unshift(entry);
   renderDebugList();
 
   try {
@@ -821,7 +822,7 @@ function toggleDebug() {
   if (d.classList.contains('open')) renderDebugList();
 }
 
-function clearRequests() { requests = []; selectedReq = null; renderDebugList(); updateDebugBadge(); }
+function clearRequests() { window._reqs = []; selectedReq = null; renderDebugList(); updateDebugBadge(); }
 
 function filterReqs(f, btn) {
   reqFilter = f;
@@ -831,14 +832,14 @@ function filterReqs(f, btn) {
 }
 
 function updateDebugBadge() {
-  var errs = requests.filter(function(r){ return typeof r.status==='number' && r.status>=400 || r.status==='ERR'; }).length;
+  var errs = window._reqs.filter(function(r){ return typeof r.status==='number' && r.status>=400 || r.status==='ERR'; }).length;
   var btn = document.getElementById('debugToggle');
-  btn.textContent = '🔍 Network (' + requests.length + ')';
+  btn.textContent = '🔍 Network (' + window._reqs.length + ')';
   btn.className = 'debug-toggle' + (errs ? ' has-err' : '');
 }
 
 function renderDebugList() {
-  var visible = requests.filter(function(r){
+  var visible = window._reqs.filter(function(r){
     if (reqFilter==='all') return true;
     if (reqFilter==='2xx') return typeof r.status==='number'&&r.status>=200&&r.status<300;
     if (reqFilter==='4xx') return typeof r.status==='number'&&r.status>=400&&r.status<500;
@@ -846,15 +847,16 @@ function renderDebugList() {
     return true;
   });
   var html = '';
-  visible.forEach(function(r, i){
+  visible.forEach(function(r){
+    var idx = window._reqs.indexOf(r);
     var sc = r.status==='ERR'?'s-5':(typeof r.status==='number'?(r.status<300?'s-2':r.status<500?'s-4':'s-5'):'');
-    html += '<div class="req-row" onclick="selectReq('+requests.indexOf(r)+')">'+
+    html += '<div class="req-row" onclick="selectReq('+idx+')">'+
       '<span class="req-method m-'+r.method+'">'+r.method+'</span>'+
       '<span class="req-path">'+esc(r.path)+'</span>'+
       '<span class="req-status '+sc+'">'+r.status+'</span>'+
       '<span class="req-time">'+(r.ms?r.ms+'ms':'')+'</span>'+
       '</div>'+
-      '<div class="req-detail" id="rd-'+requests.indexOf(r)+'"></div>';
+      '<div class="req-detail" id="rd-'+idx+'"></div>';
   });
   document.getElementById('reqList').innerHTML = html || '<div style="padding:16px;font-size:12px;color:var(--muted);text-align:center">No requests yet</div>';
 }
@@ -862,7 +864,7 @@ function renderDebugList() {
 function selectReq(idx) {
   // close previous
   document.querySelectorAll('.req-detail.open').forEach(function(el){ el.classList.remove('open'); });
-  var r = requests[idx];
+  var r = window._reqs[idx];
   if (!r) return;
   var el = document.getElementById('rd-'+idx);
   if (!el) return;
