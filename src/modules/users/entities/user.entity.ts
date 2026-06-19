@@ -64,10 +64,6 @@ export class UserEntity extends BaseEntity {
   @Column({ name: 'stripe_customer_id', nullable: true })
   stripeCustomerId: string;
 
-  @Column({ name: 'tenant_id', nullable: true })
-  @Index()
-  tenantId: string;
-
   get fullName(): string {
     return `${this.firstName} ${this.lastName}`;
   }
