@@ -36,6 +36,7 @@ import { FilesModule } from './modules/files/files.module';
 import { QueueModule } from './modules/queue/queue.module';
 import { SentryModule } from './modules/sentry/sentry.module';
 import { ProductsModule } from './modules/products/products.module';
+import { SeedModule } from './modules/seed/seed.module';
 @Module({
   imports: [
     // ─── Config (global) ─────────────────────────────────────────────────────
@@ -130,6 +131,7 @@ import { ProductsModule } from './modules/products/products.module';
     OpenAIModule,          // OpenAI: chat, embeddings, image, whisper, TTS
     CryptoModule,          // Encryption, blockchain read, price data
     HealthModule,          // /health endpoint
+    SeedModule,            // POST /api/v1/seed — dev seeding
   ],
   providers: [
     CircuitBreakerService,
