@@ -416,6 +416,7 @@ async function api(method, path, body) {
 
   var t0 = Date.now();
   var entry = { method: method, url: url, path: path, reqBody: body || null, status: '…', ms: 0, resBody: null, error: null };
+  if (!Array.isArray(window._reqs)) window._reqs = [];
   window._reqs.unshift(entry);
   renderDebugList();
 
