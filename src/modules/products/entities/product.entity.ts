@@ -54,6 +54,9 @@ export class ProductEntity extends BaseEntity {
   @Column({ name: 'owner_id', nullable: true })
   ownerId: string;
 
+  @Column({ name: 'tenant_id', nullable: true })
+  tenantId: string;
+
   @Column({ name: 'view_count', default: 0 })
   viewCount: number;
 

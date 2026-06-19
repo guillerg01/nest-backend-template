@@ -21,6 +21,7 @@ import { PermissionsGuard } from './shared/guards/permissions.guard';
 import { CircuitBreakerService } from './shared/services/circuit-breaker.service';
 import { RetryService } from './shared/services/retry.service';
 import { CorrelationIdMiddleware } from './shared/middleware/correlation-id.middleware';
+import { TenantMiddleware } from './shared/middleware/tenant.middleware';
 
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
@@ -37,6 +38,7 @@ import { FilesModule } from './modules/files/files.module';
 import { QueueModule } from './modules/queue/queue.module';
 import { SentryModule } from './modules/sentry/sentry.module';
 import { ProductsModule } from './modules/products/products.module';
+import { TenantModule } from './modules/tenant/tenant.module';
 
 @Module({
   imports: [
@@ -132,6 +134,7 @@ import { ProductsModule } from './modules/products/products.module';
     OpenAIModule,          // OpenAI: chat, embeddings, image, whisper, TTS
     CryptoModule,          // Encryption, blockchain read, price data
     HealthModule,          // /health endpoint
+    TenantModule,          // Multi-tenancy
   ],
   providers: [
     CircuitBreakerService,
@@ -154,6 +157,9 @@ export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
       .apply(CorrelationIdMiddleware)
+      .forRoutes({ path: '*', method: RequestMethod.ALL });
+    consumer
+      .apply(TenantMiddleware)
       .forRoutes({ path: '*', method: RequestMethod.ALL });
   }
 }

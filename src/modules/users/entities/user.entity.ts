@@ -1,4 +1,4 @@
-import { Column, Entity, ManyToOne, JoinColumn } from 'typeorm';
+import { Column, Entity, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { Exclude } from 'class-transformer';
 import { BaseEntity } from '../../../shared/base/base.entity';
 import { RoleEntity } from '../../security/entities/role.entity';
@@ -63,6 +63,10 @@ export class UserEntity extends BaseEntity {
   // Stripe customer ID for payment integration
   @Column({ name: 'stripe_customer_id', nullable: true })
   stripeCustomerId: string;
+
+  @Column({ name: 'tenant_id', nullable: true })
+  @Index()
+  tenantId: string;
 
   get fullName(): string {
     return `${this.firstName} ${this.lastName}`;

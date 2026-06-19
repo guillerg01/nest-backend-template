@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>API Tester — NestJS Template</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d0d11;--surface:#141418;--surface2:#1c1c23;--border:#2a2a35;
+  --accent:#6366f1;--accent2:#818cf8;--success:#22c55e;--error:#ef4444;
+  --warn:#f59e0b;--text:#e2e8f0;--muted:#64748b;--tag:#334155;
+  --font:ui-monospace,'Cascadia Code','Fira Code',monospace;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden}
+/* ── Top Bar ──────────────────────────────────────────────── */
+.topbar{display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0}
+.topbar h1{font-size:14px;font-weight:700;color:var(--accent2);white-space:nowrap}
+.topbar input{flex:1;min-width:200px;max-width:360px;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:7px;font-size:13px;font-family:var(--font)}
+.topbar input:focus{outline:2px solid var(--accent);border-color:transparent}
+.token-wrap{display:flex;align-items:center;gap:6px;flex:1}
+.token-wrap label{font-size:11px;color:var(--muted);white-space:nowrap}
+.token-wrap input{flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--accent2);padding:6px 10px;border-radius:7px;font-size:11px;font-family:var(--font)}
+.token-wrap input:focus{outline:2px solid var(--accent)}
+.tenant-wrap{display:flex;align-items:center;gap:6px}
+.tenant-wrap label{font-size:11px;color:var(--muted);white-space:nowrap}
+.tenant-wrap input{width:140px;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:7px;font-size:11px}
+.status-dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex-shrink:0;transition:background .2s}
+.status-dot.ok{background:var(--success)}
+.status-dot.err{background:var(--error)}
+/* ── Layout ───────────────────────────────────────────────── */
+.layout{display:flex;flex:1;overflow:hidden}
+/* ── Sidebar ──────────────────────────────────────────────── */
+.sidebar{width:240px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column}
+.sidebar-search{padding:10px 12px;border-bottom:1px solid var(--border)}
+.sidebar-search input{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:7px;font-size:12px}
+.sidebar-search input:focus{outline:2px solid var(--accent)}
+.group-label{font-size:10px;font-weight:700;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;padding:10px 12px 4px}
+.ep-btn{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:6px 12px;cursor:pointer;font-size:12px;transition:background .1s}
+.ep-btn:hover{background:var(--surface2)}
+.ep-btn.active{background:rgba(99,102,241,.15);color:var(--accent2)}
+.method{font-size:9px;font-weight:800;letter-spacing:.05em;padding:2px 5px;border-radius:4px;flex-shrink:0;width:36px;text-align:center}
+.GET{background:rgba(34,197,94,.15);color:#4ade80}
+.POST{background:rgba(99,102,241,.2);color:#a5b4fc}
+.PATCH{background:rgba(245,158,11,.15);color:#fcd34d}
+.DELETE{background:rgba(239,68,68,.15);color:#fca5a5}
+/* ── Main ─────────────────────────────────────────────────── */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.request-panel{padding:16px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:10px;flex-shrink:0}
+.url-row{display:flex;gap:8px;align-items:center}
+.method-badge{font-size:11px;font-weight:800;padding:6px 10px;border-radius:7px;min-width:64px;text-align:center}
+.url-input{flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:7px;font-family:var(--font);font-size:13px}
+.url-input:focus{outline:2px solid var(--accent)}
+.send-btn{background:var(--accent);color:#fff;border:none;padding:8px 20px;border-radius:7px;font-weight:700;font-size:13px;cursor:pointer;transition:opacity .15s;white-space:nowrap}
+.send-btn:hover{opacity:.85}
+.send-btn:active{opacity:.7}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--border);padding:0 16px}
+.tab-btn{background:none;border:none;color:var(--muted);padding:8px 14px;cursor:pointer;font-size:12px;border-bottom:2px solid transparent;transition:all .15s}
+.tab-btn.active{color:var(--text);border-bottom-color:var(--accent)}
+.tab-content{display:none;padding:12px 16px;flex:1;overflow:hidden}
+.tab-content.active{display:flex;flex-direction:column;gap:8px}
+textarea.body-editor{flex:1;min-height:120px;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:8px;font-family:var(--font);font-size:12px;resize:none}
+textarea.body-editor:focus{outline:2px solid var(--accent)}
+/* ── Response ─────────────────────────────────────────────── */
+.response-section{flex:1;display:flex;flex-direction:column;overflow:hidden;border-top:1px solid var(--border)}
+.response-header{display:flex;align-items:center;gap:10px;padding:8px 16px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0}
+.response-header span{font-size:11px;color:var(--muted)}
+.res-status{font-size:12px;font-weight:700;font-family:var(--font)}
+.res-status.s2{color:var(--success)}
+.res-status.s4,.res-status.s5{color:var(--error)}
+.res-time{font-size:11px;color:var(--muted);font-family:var(--font)}
+.copy-btn{margin-left:auto;background:var(--surface2);border:1px solid var(--border);color:var(--muted);padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer}
+.copy-btn:hover{color:var(--text)}
+pre.res-body{flex:1;overflow:auto;padding:16px;font-family:var(--font);font-size:12px;line-height:1.6;color:var(--text);background:var(--bg)}
+/* JSON colors */
+.jk{color:#93c5fd}.js{color:#86efac}.jn{color:#fca5a5}.jb{color:#c4b5fd}.jnu{color:var(--muted)}
+/* ── Helpers ──────────────────────────────────────────────── */
+.helper-row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.helper-label{font-size:11px;color:var(--muted);white-space:nowrap}
+.helper-input{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:5px 8px;border-radius:6px;font-size:12px;font-family:var(--font);flex:1;min-width:80px}
+.helper-input:focus{outline:2px solid var(--accent)}
+/* scrollbar */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+</style>
+</head>
+<body>
+<!-- TOP BAR -->
+<div class="topbar">
+  <h1>⚡ API Tester</h1>
+  <label style="font-size:11px;color:var(--muted);white-space:nowrap">Base URL</label>
+  <input id="baseUrl" value="http://localhost:3000" placeholder="https://your-api.onrender.com" />
+  <div class="token-wrap">
+    <label>Bearer</label>
+    <input id="tokenInput" placeholder="Paste JWT or login below" />
+  </div>
+  <div class="tenant-wrap">
+    <label>Tenant</label>
+    <input id="tenantInput" placeholder="default" />
+  </div>
+  <div class="status-dot" id="statusDot" title="Health"></div>
+</div>
+
+<div class="layout">
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-search">
+    <input id="epSearch" placeholder="Search endpoints…" oninput="filterEndpoints(this.value)" />
+  </div>
+  <div id="epList"></div>
+</nav>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="request-panel">
+    <div class="url-row">
+      <span class="method-badge POST" id="methodBadge">POST</span>
+      <input class="url-input" id="urlInput" value="/api/v1/auth/login" />
+      <button class="send-btn" onclick="sendRequest()">Send ▶</button>
+    </div>
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('body',this)">Body</button>
+      <button class="tab-btn" onclick="switchTab('headers',this)">Headers</button>
+      <button class="tab-btn" onclick="switchTab('params',this)">Params</button>
+    </div>
+    <div class="tab-content active" id="tab-body">
+      <div class="helper-row">
+        <span class="helper-label">Quick fill:</span>
+        <span id="quickFillArea"></span>
+      </div>
+      <textarea class="body-editor" id="bodyEditor" placeholder='{"key":"value"}'>{
+  "email": "admin@example.com",
+  "password": "Admin1234!"
+}</textarea>
+    </div>
+    <div class="tab-content" id="tab-headers">
+      <textarea class="body-editor" id="headersEditor" placeholder='{"X-Custom": "value"}'>{}</textarea>
+    </div>
+    <div class="tab-content" id="tab-params">
+      <div class="helper-row">
+        <span class="helper-label">Path params:</span>
+        <textarea class="body-editor" id="paramsEditor" style="min-height:60px" placeholder='{"id":"uuid-here","slug":"product-slug"}'>{}</textarea>
+      </div>
+    </div>
+  </div>
+
+  <div class="response-section">
+    <div class="response-header">
+      <span>Response</span>
+      <span class="res-status" id="resStatus">—</span>
+      <span class="res-time" id="resTime"></span>
+      <button class="copy-btn" onclick="copyResponse()">Copy</button>
+    </div>
+    <pre class="res-body" id="resBody">Hit "Send" to see response here.</pre>
+  </div>
+</div>
+</div>
+
+<script>
+// ── Endpoints definition ───────────────────────────────────
+const ENDPOINTS = [
+  // ─── Auth ───────────────────────────────────────────────
+  { group:'Auth', method:'POST', path:'/api/v1/auth/register', label:'Register', auth:false,
+    body:{ email:'user@example.com', firstName:'Jane', lastName:'Doe', password:'Password1!' } },
+  { group:'Auth', method:'POST', path:'/api/v1/auth/login', label:'Login', auth:false,
+    body:{ email:'admin@example.com', password:'Admin1234!' },
+    onSuccess: (d) => { if(d?.data?.accessToken){ setToken(d.data.accessToken); } } },
+  { group:'Auth', method:'POST', path:'/api/v1/auth/refresh', label:'Refresh token', auth:false,
+    body:{ refreshToken:'' } },
+  { group:'Auth', method:'POST', path:'/api/v1/auth/forgot-password', label:'Forgot password', auth:false,
+    body:{ email:'user@example.com' } },
+  { group:'Auth', method:'POST', path:'/api/v1/auth/reset-password', label:'Reset password', auth:false,
+    body:{ token:'reset-token-here', newPassword:'NewPass1!' } },
+  { group:'Auth', method:'GET', path:'/api/v1/auth/me', label:'Me (profile)', auth:true },
+
+  // ─── Users ──────────────────────────────────────────────
+  { group:'Users', method:'GET', path:'/api/v1/users/me', label:'My profile', auth:true },
+  { group:'Users', method:'GET', path:'/api/v1/users', label:'List users', auth:true },
+  { group:'Users', method:'GET', path:'/api/v1/users/:id', label:'Get user', auth:true,
+    params:{ id:'' } },
+  { group:'Users', method:'PATCH', path:'/api/v1/users/:id', label:'Update user', auth:true,
+    params:{ id:'' }, body:{ firstName:'Updated', lastName:'Name' } },
+  { group:'Users', method:'DELETE', path:'/api/v1/users/:id', label:'Delete user', auth:true,
+    params:{ id:'' } },
+
+  // ─── Tenants ─────────────────────────────────────────────
+  { group:'Tenants', method:'GET', path:'/api/v1/tenants', label:'List tenants', auth:true },
+  { group:'Tenants', method:'POST', path:'/api/v1/tenants', label:'Create tenant', auth:true,
+    body:{ name:'Acme Corp', slug:'acme', plan:'pro' } },
+  { group:'Tenants', method:'GET', path:'/api/v1/tenants/:id', label:'Get tenant', auth:true,
+    params:{ id:'' } },
+  { group:'Tenants', method:'PATCH', path:'/api/v1/tenants/:id', label:'Update tenant', auth:true,
+    params:{ id:'' }, body:{ plan:'enterprise' } },
+  { group:'Tenants', method:'DELETE', path:'/api/v1/tenants/:id', label:'Delete tenant', auth:true,
+    params:{ id:'' } },
+
+  // ─── Products ────────────────────────────────────────────
+  { group:'Products', method:'GET', path:'/api/v1/products', label:'List products', auth:false },
+  { group:'Products', method:'GET', path:'/api/v1/products/search', label:'Search products', auth:false },
+  { group:'Products', method:'GET', path:'/api/v1/products/:slug', label:'Get product by slug', auth:false,
+    params:{ slug:'my-product' } },
+  { group:'Products', method:'GET', path:'/api/v1/products/admin/all', label:'Admin: all products', auth:true },
+  { group:'Products', method:'GET', path:'/api/v1/products/my/products', label:'My products', auth:true },
+  { group:'Products', method:'POST', path:'/api/v1/products', label:'Create product', auth:true,
+    body:{ name:'New Product', slug:'new-product', price:29.99, stockQuantity:100, status:'active' } },
+  { group:'Products', method:'PATCH', path:'/api/v1/products/:id', label:'Update product', auth:true,
+    params:{ id:'' }, body:{ price:39.99 } },
+  { group:'Products', method:'DELETE', path:'/api/v1/products/:id', label:'Delete product', auth:true,
+    params:{ id:'' } },
+
+  // ─── Chat ────────────────────────────────────────────────
+  { group:'Chat', method:'GET', path:'/api/v1/chat/rooms', label:'List rooms', auth:true },
+  { group:'Chat', method:'POST', path:'/api/v1/chat/rooms', label:'Create room', auth:true,
+    body:{ name:'General', description:'Main chat room' } },
+  { group:'Chat', method:'POST', path:'/api/v1/chat/rooms/direct', label:'Create DM', auth:true,
+    body:{ recipientId:'' } },
+  { group:'Chat', method:'GET', path:'/api/v1/chat/rooms/:roomId', label:'Get room', auth:true,
+    params:{ roomId:'' } },
+  { group:'Chat', method:'GET', path:'/api/v1/chat/rooms/:roomId/messages', label:'Get messages', auth:true,
+    params:{ roomId:'' } },
+  { group:'Chat', method:'POST', path:'/api/v1/chat/rooms/:roomId/read', label:'Mark read', auth:true,
+    params:{ roomId:'' } },
+  { group:'Chat', method:'DELETE', path:'/api/v1/chat/messages/:messageId', label:'Delete message', auth:true,
+    params:{ messageId:'' } },
+
+  // ─── Files ───────────────────────────────────────────────
+  { group:'Files', method:'GET', path:'/api/v1/files', label:'List files', auth:true },
+  { group:'Files', method:'GET', path:'/api/v1/files/:key/url', label:'Presigned URL', auth:true,
+    params:{ key:'my-file.jpg' } },
+  { group:'Files', method:'DELETE', path:'/api/v1/files/:key', label:'Delete file', auth:true,
+    params:{ key:'my-file.jpg' } },
+
+  // ─── Payments ────────────────────────────────────────────
+  { group:'Payments', method:'POST', path:'/api/v1/payments/checkout/subscription', label:'Create subscription', auth:true,
+    body:{ priceId:'price_xxx', successUrl:'http://localhost:3001/success', cancelUrl:'http://localhost:3001/cancel' } },
+  { group:'Payments', method:'POST', path:'/api/v1/payments/checkout/one-time', label:'One-time checkout', auth:true,
+    body:{ priceId:'price_xxx', successUrl:'http://localhost:3001/success', cancelUrl:'http://localhost:3001/cancel' } },
+
+  // ─── Queue ───────────────────────────────────────────────
+  { group:'Queue', method:'POST', path:'/api/v1/queue/email', label:'Queue email job', auth:true,
+    body:{ to:'user@example.com', subject:'Hello', body:'Test email from queue' } },
+  { group:'Queue', method:'POST', path:'/api/v1/queue/ai', label:'Queue AI job', auth:true,
+    body:{ prompt:'Summarize this text', data:'Long text here...' } },
+
+  // ─── OpenAI ──────────────────────────────────────────────
+  { group:'OpenAI', method:'POST', path:'/api/v1/openai/chat', label:'Chat completion', auth:true,
+    body:{ messages:[{ role:'user', content:'Hello! What can you do?' }] } },
+  { group:'OpenAI', method:'POST', path:'/api/v1/openai/image/generate', label:'Generate image', auth:true,
+    body:{ prompt:'A futuristic city at night', size:'1024x1024' } },
+  { group:'OpenAI', method:'POST', path:'/api/v1/openai/moderate', label:'Moderate text', auth:true,
+    body:{ text:'Hello world' } },
+
+  // ─── Scraping ────────────────────────────────────────────
+  { group:'Scraping', method:'POST', path:'/api/v1/scraping/fetch', label:'Fetch & scrape', auth:true,
+    body:{ url:'https://example.com', selector:'h1' } },
+  { group:'Scraping', method:'POST', path:'/api/v1/scraping/table', label:'Scrape table', auth:true,
+    body:{ url:'https://example.com/table', tableIndex:0 } },
+
+  // ─── Crypto ──────────────────────────────────────────────
+  { group:'Crypto', method:'GET', path:'/api/v1/crypto/key/generate', label:'Generate key', auth:true },
+  { group:'Crypto', method:'POST', path:'/api/v1/crypto/encrypt', label:'Encrypt', auth:true,
+    body:{ text:'secret message', key:'' } },
+  { group:'Crypto', method:'POST', path:'/api/v1/crypto/hmac', label:'HMAC sign', auth:true,
+    body:{ text:'data to sign', secret:'my-secret' } },
+  { group:'Crypto', method:'GET', path:'/api/v1/crypto/price/:coinId', label:'Crypto price', auth:true,
+    params:{ coinId:'bitcoin' } },
+  { group:'Crypto', method:'GET', path:'/api/v1/crypto/evm/balance/:address', label:'EVM balance', auth:true,
+    params:{ address:'0x...' } },
+
+  // ─── Health ──────────────────────────────────────────────
+  { group:'Health', method:'GET', path:'/health', label:'Health check', auth:false },
+];
+
+// ── State ─────────────────────────────────────────────────
+let currentEp = null;
+let lastResponse = '';
+let callbacks = {};
+ENDPOINTS.forEach((ep, i) => { if (ep.onSuccess) callbacks[i] = ep.onSuccess; });
+
+// ── Build sidebar ─────────────────────────────────────────
+function buildSidebar(filter = '') {
+  const groups = {};
+  ENDPOINTS.forEach((ep, i) => {
+    const match = !filter ||
+      ep.label.toLowerCase().includes(filter) ||
+      ep.path.toLowerCase().includes(filter) ||
+      ep.method.toLowerCase().includes(filter);
+    if (!match) return;
+    if (!groups[ep.group]) groups[ep.group] = [];
+    groups[ep.group].push({ ep, i });
+  });
+
+  const list = document.getElementById('epList');
+  list.innerHTML = '';
+  Object.entries(groups).forEach(([group, items]) => {
+    const lbl = document.createElement('div');
+    lbl.className = 'group-label';
+    lbl.textContent = group;
+    list.appendChild(lbl);
+    items.forEach(({ ep, i }) => {
+      const btn = document.createElement('button');
+      btn.className = 'ep-btn' + (currentEp === i ? ' active' : '');
+      btn.dataset.idx = i;
+      btn.innerHTML = `<span class="method ${ep.method}">${ep.method}</span>${ep.label}`;
+      btn.onclick = () => loadEndpoint(i);
+      list.appendChild(btn);
+    });
+  });
+}
+
+function filterEndpoints(val) { buildSidebar(val.toLowerCase()); }
+
+function loadEndpoint(idx) {
+  currentEp = idx;
+  const ep = ENDPOINTS[idx];
+
+  document.getElementById('methodBadge').textContent = ep.method;
+  document.getElementById('methodBadge').className = 'method-badge ' + ep.method;
+  document.getElementById('urlInput').value = ep.path;
+
+  document.getElementById('bodyEditor').value = ep.body ? JSON.stringify(ep.body, null, 2) : '';
+  document.getElementById('paramsEditor').value = ep.params ? JSON.stringify(ep.params, null, 2) : '{}';
+
+  buildSidebar(document.getElementById('epSearch').value.toLowerCase());
+  buildQuickFill(ep);
+}
+
+function buildQuickFill(ep) {
+  const area = document.getElementById('quickFillArea');
+  area.innerHTML = '';
+  if (ep.auth) {
+    const b = document.createElement('button');
+    b.style.cssText = 'background:rgba(99,102,241,.2);border:1px solid rgba(99,102,241,.3);color:#a5b4fc;padding:3px 8px;border-radius:5px;font-size:11px;cursor:pointer';
+    b.textContent = '🔑 Use saved token';
+    b.onclick = () => { /* token already injected at send time */ alert('Token injected from top bar automatically.'); };
+    area.appendChild(b);
+  }
+}
+
+// ── Token helpers ─────────────────────────────────────────
+function setToken(t) {
+  document.getElementById('tokenInput').value = t;
+  localStorage.setItem('api_token', t);
+}
+function getToken() { return document.getElementById('tokenInput').value || localStorage.getItem('api_token') || ''; }
+function getTenant() { return document.getElementById('tenantInput').value || ''; }
+function getBase() { return document.getElementById('baseUrl').value.replace(/\/$/, ''); }
+
+// ── Path param replacement ────────────────────────────────
+function buildUrl(path) {
+  let params = {};
+  try { params = JSON.parse(document.getElementById('paramsEditor').value || '{}'); } catch {}
+  return path.replace(/:([a-zA-Z_]+)/g, (_, k) => params[k] || `:${k}`);
+}
+
+// ── Send request ──────────────────────────────────────────
+async function sendRequest() {
+  const method = document.getElementById('methodBadge').textContent.trim();
+  const rawPath = document.getElementById('urlInput').value;
+  const path = buildUrl(rawPath);
+  const url = getBase() + path;
+
+  let extraHeaders = {};
+  try { extraHeaders = JSON.parse(document.getElementById('headersEditor').value || '{}'); } catch {}
+
+  const headers = { 'Content-Type': 'application/json', ...extraHeaders };
+  const token = getToken();
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const tenant = getTenant();
+  if (tenant) headers['X-Tenant-ID'] = tenant;
+
+  let body = undefined;
+  if (!['GET', 'DELETE'].includes(method)) {
+    const raw = document.getElementById('bodyEditor').value.trim();
+    if (raw) try { body = JSON.stringify(JSON.parse(raw)); } catch { body = raw; }
+  }
+
+  const resStatus = document.getElementById('resStatus');
+  const resTime = document.getElementById('resTime');
+  const resBody = document.getElementById('resBody');
+  resBody.innerHTML = '<span style="color:var(--muted)">Sending…</span>';
+  resStatus.textContent = '…';
+  resStatus.className = 'res-status';
+
+  const t0 = Date.now();
+  try {
+    const res = await fetch(url, { method, headers, body });
+    const ms = Date.now() - t0;
+    const text = await res.text();
+    let parsed;
+    try { parsed = JSON.parse(text); } catch { parsed = null; }
+
+    resStatus.textContent = res.status + ' ' + res.statusText;
+    resStatus.className = 'res-status s' + String(res.status)[0];
+    resTime.textContent = ms + 'ms';
+
+    if (parsed !== null) {
+      lastResponse = JSON.stringify(parsed, null, 2);
+      resBody.innerHTML = highlight(lastResponse);
+      // fire onSuccess callback
+      if (currentEp !== null && callbacks[currentEp]) callbacks[currentEp](parsed);
+    } else {
+      lastResponse = text;
+      resBody.textContent = text;
+    }
+  } catch (err) {
+    resStatus.textContent = 'Network Error';
+    resStatus.className = 'res-status s5';
+    resTime.textContent = (Date.now() - t0) + 'ms';
+    resBody.textContent = err.message;
+    lastResponse = err.message;
+  }
+}
+
+// ── JSON syntax highlight ─────────────────────────────────
+function highlight(json) {
+  return json
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, (m) => {
+      let cls = 'jn';
+      if (/^"/.test(m)) cls = /:$/.test(m) ? 'jk' : 'js';
+      else if (/true|false/.test(m)) cls = 'jb';
+      else if (/null/.test(m)) cls = 'jnu';
+      return `<span class="${cls}">${m}</span>`;
+    });
+}
+
+function copyResponse() {
+  navigator.clipboard.writeText(lastResponse).then(() => {
+    const btn = document.querySelector('.copy-btn');
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy', 1500);
+  });
+}
+
+// ── Tab switching ─────────────────────────────────────────
+function switchTab(name, el) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+// ── Health check dot ──────────────────────────────────────
+async function checkHealth() {
+  const dot = document.getElementById('statusDot');
+  try {
+    const r = await fetch(getBase() + '/health', { signal: AbortSignal.timeout(3000) });
+    dot.className = 'status-dot ' + (r.ok ? 'ok' : 'err');
+  } catch { dot.className = 'status-dot err'; }
+}
+
+// ── Enter key sends ───────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') sendRequest();
+});
+
+// ── Init ──────────────────────────────────────────────────
+(function init() {
+  const saved = localStorage.getItem('api_token');
+  if (saved) document.getElementById('tokenInput').value = saved;
+
+  const savedBase = localStorage.getItem('api_base');
+  if (savedBase) document.getElementById('baseUrl').value = savedBase;
+
+  document.getElementById('baseUrl').addEventListener('change', e => {
+    localStorage.setItem('api_base', e.target.value);
+    checkHealth();
+  });
+
+  buildSidebar();
+  loadEndpoint(1); // default: login
+  checkHealth();
+  setInterval(checkHealth, 30000);
+})();
+</script>
+</body>
+</html>
