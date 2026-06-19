@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>NestJS Template — App</title>
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0c0c10;--surface:#13131a;--surface2:#1a1a24;--surface3:#22222e;
+  --border:#252530;--accent:#6366f1;--accent-dim:rgba(99,102,241,.15);
+  --green:#22c55e;--red:#ef4444;--yellow:#f59e0b;--blue:#38bdf8;
+  --text:#e2e8f0;--muted:#64748b;--muted2:#475569;
+  --r:10px;--font-mono:ui-monospace,'Cascadia Code',monospace;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;display:flex;align-items:center;justify-content:center}
+
+/* ── Auth ───────────────────────────────────────────────── */
+#auth{width:100%;max-width:400px;padding:24px}
+.auth-logo{text-align:center;margin-bottom:28px}
+.auth-logo h1{font-size:22px;font-weight:800;background:linear-gradient(135deg,#e2e8f0,#a5b4fc);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.auth-logo p{color:var(--muted);font-size:13px;margin-top:4px}
+.auth-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;display:flex;flex-direction:column;gap:16px}
+.field label{display:block;font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.05em;text-transform:uppercase;margin-bottom:6px}
+.field input{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:8px;font-size:14px;transition:border-color .15s}
+.field input:focus{outline:none;border-color:var(--accent)}
+.auth-actions{display:flex;flex-direction:column;gap:8px}
+.btn-primary{background:linear-gradient(135deg,#6366f1,#818cf8);color:#fff;border:none;padding:11px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;transition:opacity .15s}
+.btn-primary:hover{opacity:.88}
+.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--muted);padding:10px;border-radius:8px;font-size:13px;cursor:pointer;transition:all .15s}
+.btn-ghost:hover{border-color:var(--accent);color:var(--text)}
+.auth-error{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:#fca5a5;padding:10px 14px;border-radius:8px;font-size:13px;display:none}
+.auth-toggle{text-align:center;font-size:12px;color:var(--muted)}
+.auth-toggle a{color:var(--accent);cursor:pointer;text-decoration:none}
+
+/* ── App Shell ──────────────────────────────────────────── */
+#app{display:none;width:100vw;height:100vh;flex-direction:row}
+.sidebar{width:220px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:16px 0}
+.sidebar-brand{padding:0 16px 16px;border-bottom:1px solid var(--border);margin-bottom:8px}
+.sidebar-brand h2{font-size:13px;font-weight:700;color:var(--accent)}
+.sidebar-brand p{font-size:11px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:pointer;border-radius:0;font-size:13px;color:var(--muted);transition:all .1s;border-left:2px solid transparent;user-select:none}
+.nav-item:hover{color:var(--text);background:var(--surface2)}
+.nav-item.active{color:var(--text);background:var(--accent-dim);border-left-color:var(--accent)}
+.nav-icon{font-size:15px;width:20px;text-align:center}
+.nav-sep{margin:8px 16px;border-top:1px solid var(--border)}
+.sidebar-foot{margin-top:auto;padding:16px}
+.logout-btn{width:100%;background:none;border:1px solid var(--border);color:var(--muted);padding:8px;border-radius:8px;font-size:12px;cursor:pointer;transition:all .15s}
+.logout-btn:hover{border-color:var(--red);color:var(--red)}
+.conn-dot{width:7px;height:7px;border-radius:50%;background:var(--muted);display:inline-block;margin-right:6px;transition:background .3s}
+.conn-dot.connected{background:var(--green)}
+.main{flex:1;overflow:hidden;display:flex;flex-direction:column}
+.section{display:none;flex:1;overflow:auto;padding:24px;flex-direction:column;gap:20px}
+.section.active{display:flex}
+.page-title{font-size:18px;font-weight:700}
+.page-sub{font-size:13px;color:var(--muted);margin-top:2px}
+
+/* ── Cards ──────────────────────────────────────────────── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px}
+.card-title{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.stat{display:flex;flex-direction:column;gap:4px}
+.stat-val{font-size:28px;font-weight:800;font-family:var(--font-mono)}
+.stat-label{font-size:11px;color:var(--muted)}
+.badge{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:600}
+.badge-green{background:rgba(34,197,94,.15);color:#4ade80}
+.badge-blue{background:rgba(56,189,248,.12);color:#7dd3fc}
+.badge-yellow{background:rgba(245,158,11,.12);color:#fcd34d}
+.badge-purple{background:rgba(99,102,241,.2);color:#a5b4fc}
+.row{display:flex;align-items:center;gap:10px}
+.avatar{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#a855f7);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;flex-shrink:0}
+input.inp,textarea.inp{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:8px;font-size:13px;width:100%;transition:border-color .15s}
+input.inp:focus,textarea.inp:focus{outline:none;border-color:var(--accent)}
+select.inp{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:8px;font-size:13px;width:100%}
+.btn-sm{background:var(--accent);color:#fff;border:none;padding:7px 14px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
+.btn-sm:hover{opacity:.85}
+.btn-sm.danger{background:rgba(239,68,68,.15);color:var(--red);border:1px solid rgba(239,68,68,.25)}
+.btn-sm.ghost{background:var(--surface2);color:var(--muted);border:1px solid var(--border)}
+.btn-sm.ghost:hover{color:var(--text)}
+
+/* ── Health ─────────────────────────────────────────────── */
+.health-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
+.health-item{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:6px}
+.health-status{font-size:11px;font-weight:700;display:flex;align-items:center;gap:5px}
+
+/* ── Chat ───────────────────────────────────────────────── */
+.chat-layout{display:flex;gap:0;height:calc(100vh - 96px);overflow:hidden}
+.rooms-panel{width:240px;flex-shrink:0;border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.rooms-header{padding:12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+.rooms-header span{font-size:12px;font-weight:700;color:var(--muted);flex:1;text-transform:uppercase;letter-spacing:.05em}
+.rooms-list{flex:1;overflow-y:auto;padding:6px}
+.room-item{padding:8px 10px;border-radius:8px;cursor:pointer;font-size:13px;transition:background .1s;display:flex;flex-direction:column;gap:2px}
+.room-item:hover{background:var(--surface2)}
+.room-item.active{background:var(--accent-dim)}
+.room-item-name{font-weight:600;color:var(--text)}
+.room-item-last{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chat-main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.chat-header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0}
+.chat-room-name{font-weight:700;font-size:14px}
+.chat-room-sub{font-size:11px;color:var(--muted)}
+.messages-area{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px}
+.msg{display:flex;gap:10px;align-items:flex-start}
+.msg.mine{flex-direction:row-reverse}
+.msg-avatar{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#334155,#475569);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+.msg-body{max-width:70%}
+.msg-meta{font-size:10px;color:var(--muted);margin-bottom:3px}
+.msg.mine .msg-meta{text-align:right}
+.msg-bubble{background:var(--surface2);border:1px solid var(--border);padding:8px 12px;border-radius:12px;font-size:13px;line-height:1.5;word-break:break-word}
+.msg.mine .msg-bubble{background:var(--accent-dim);border-color:rgba(99,102,241,.3)}
+.typing-indicator{font-size:11px;color:var(--muted);padding:0 16px 6px;min-height:18px}
+.chat-input-row{padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px;flex-shrink:0}
+.chat-input{flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:9px 14px;border-radius:10px;font-size:13px;resize:none;height:40px}
+.chat-input:focus{outline:none;border-color:var(--accent)}
+.chat-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;color:var(--muted);gap:8px}
+.chat-empty-icon{font-size:36px;opacity:.3}
+
+/* ── Products ───────────────────────────────────────────── */
+.products-list{display:flex;flex-direction:column;gap:8px}
+.product-row{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 16px;display:flex;align-items:center;gap:12px}
+.product-name{font-weight:600;font-size:14px;flex:1}
+.product-price{font-family:var(--font-mono);color:var(--green);font-size:13px}
+.product-status{font-size:11px}
+
+/* ── Toast ──────────────────────────────────────────────── */
+#toast{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:6px;z-index:9999}
+.toast-msg{background:var(--surface);border:1px solid var(--border);padding:10px 16px;border-radius:10px;font-size:12px;animation:slideIn .2s ease;max-width:280px}
+.toast-msg.ok{border-color:rgba(34,197,94,.4);color:#4ade80}
+.toast-msg.err{border-color:rgba(239,68,68,.4);color:#fca5a5}
+@keyframes slideIn{from{transform:translateX(20px);opacity:0}to{transform:translateX(0);opacity:1}}
+
+/* ── New Room Modal ──────────────────────────────────────── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:1000}
+.modal-overlay.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;width:360px;display:flex;flex-direction:column;gap:14px}
+.modal h3{font-size:15px;font-weight:700}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+</style>
+</head>
+<body>
+
+<!-- ── AUTH ──────────────────────────────────────────────── -->
+<div id="auth">
+  <div class="auth-logo">
+    <h1>⚡ NestJS Template</h1>
+    <p>Development test environment</p>
+  </div>
+  <div class="auth-card">
+    <div id="authError" class="auth-error"></div>
+    <div class="field">
+      <label>Email</label>
+      <input id="authEmail" type="email" value="admin@example.com" />
+    </div>
+    <div class="field" id="registerNameFields" style="display:none">
+      <label>First Name</label>
+      <input id="authFirstName" type="text" placeholder="Jane" />
+    </div>
+    <div class="field" id="registerLastField" style="display:none">
+      <label>Last Name</label>
+      <input id="authLastName" type="text" placeholder="Doe" />
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input id="authPassword" type="password" value="Admin1234!" />
+    </div>
+    <div class="auth-actions">
+      <button class="btn-primary" onclick="submitAuth()" id="authBtn">Login</button>
+    </div>
+    <div class="auth-toggle">
+      <span id="authToggleText">Don't have an account?</span>
+      <a onclick="toggleAuth()"> <span id="authToggleLink">Register</span></a>
+    </div>
+  </div>
+</div>
+
+<!-- ── APP ───────────────────────────────────────────────── -->
+<div id="app">
+  <nav class="sidebar">
+    <div class="sidebar-brand">
+      <h2>⚡ NestJS Template</h2>
+      <p id="sidebarEmail">—</p>
+    </div>
+    <div class="nav-item active" onclick="showSection('profile')" data-section="profile">
+      <span class="nav-icon">👤</span> Profile
+    </div>
+    <div class="nav-item" onclick="showSection('chat')" data-section="chat">
+      <span class="nav-icon">💬</span> Chat
+      <span class="conn-dot" id="chatDot" title="Socket status"></span>
+    </div>
+    <div class="nav-item" onclick="showSection('products')" data-section="products">
+      <span class="nav-icon">📦</span> Products
+    </div>
+    <div class="nav-item" onclick="showSection('tenants')" data-section="tenants">
+      <span class="nav-icon">🏢</span> Tenants
+    </div>
+    <div class="nav-sep"></div>
+    <div class="nav-item" onclick="showSection('health')" data-section="health">
+      <span class="nav-icon">🩺</span> Health
+    </div>
+    <div class="sidebar-foot">
+      <div style="font-size:10px;color:var(--muted);margin-bottom:8px">
+        <label>Base URL</label>
+        <input class="inp" id="baseUrlInput" value="http://localhost:3000" style="margin-top:4px;font-size:11px" onchange="BASE_URL=this.value;localStorage.setItem('baseUrl',this.value)" />
+      </div>
+      <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
+  </nav>
+
+  <div class="main">
+    <!-- ── PROFILE ── -->
+    <div class="section active" id="section-profile">
+      <div><div class="page-title">Profile</div><div class="page-sub">Your account info</div></div>
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title">Account</div>
+          <div class="row" style="gap:14px;margin-bottom:16px">
+            <div class="avatar" id="profileAvatar">?</div>
+            <div>
+              <div style="font-weight:700;font-size:16px" id="profileName">—</div>
+              <div style="font-size:12px;color:var(--muted)" id="profileEmail">—</div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div class="row" style="justify-content:space-between">
+              <span style="font-size:12px;color:var(--muted)">Role</span>
+              <span class="badge badge-purple" id="profileRole">—</span>
+            </div>
+            <div class="row" style="justify-content:space-between">
+              <span style="font-size:12px;color:var(--muted)">Verified</span>
+              <span class="badge" id="profileVerified">—</span>
+            </div>
+            <div class="row" style="justify-content:space-between">
+              <span style="font-size:12px;color:var(--muted)">Provider</span>
+              <span style="font-size:12px" id="profileProvider">—</span>
+            </div>
+            <div class="row" style="justify-content:space-between">
+              <span style="font-size:12px;color:var(--muted)">Last login</span>
+              <span style="font-size:12px;font-family:var(--font-mono)" id="profileLastLogin">—</span>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Update profile</div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div class="field"><label style="font-size:11px;color:var(--muted)">First Name</label><input class="inp" id="updFirstName" style="margin-top:4px" /></div>
+            <div class="field"><label style="font-size:11px;color:var(--muted)">Last Name</label><input class="inp" id="updLastName" style="margin-top:4px" /></div>
+            <div class="field"><label style="font-size:11px;color:var(--muted)">Phone</label><input class="inp" id="updPhone" style="margin-top:4px" placeholder="+1 555 0000" /></div>
+            <button class="btn-sm" onclick="updateProfile()">Save changes</button>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Token</div>
+        <div style="font-family:var(--font-mono);font-size:11px;color:var(--muted);word-break:break-all;background:var(--surface2);padding:10px;border-radius:8px" id="profileToken">—</div>
+      </div>
+    </div>
+
+    <!-- ── CHAT ── -->
+    <div class="section" id="section-chat" style="padding:0;gap:0">
+      <div class="chat-layout">
+        <div class="rooms-panel">
+          <div class="rooms-header">
+            <span>Rooms</span>
+            <button class="btn-sm" style="padding:4px 8px;font-size:11px" onclick="openNewRoomModal()">+ New</button>
+          </div>
+          <div class="rooms-list" id="roomsList"></div>
+        </div>
+        <div class="chat-main" id="chatMain">
+          <div class="chat-empty">
+            <div class="chat-empty-icon">💬</div>
+            <div style="font-size:13px;color:var(--muted)">Select or create a room</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PRODUCTS ── -->
+    <div class="section" id="section-products">
+      <div><div class="page-title">Products</div><div class="page-sub">Create and browse products</div></div>
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title">New product</div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <input class="inp" id="prodName" placeholder="Product name" />
+            <input class="inp" id="prodSlug" placeholder="my-product (slug)" />
+            <div class="row">
+              <input class="inp" id="prodPrice" type="number" placeholder="Price" step="0.01" />
+              <input class="inp" id="prodStock" type="number" placeholder="Stock" />
+            </div>
+            <select class="inp" id="prodStatus">
+              <option value="active">Active</option>
+              <option value="draft">Draft</option>
+              <option value="archived">Archived</option>
+            </select>
+            <textarea class="inp" id="prodDesc" placeholder="Description (optional)" rows="2"></textarea>
+            <button class="btn-sm" onclick="createProduct()">Create product</button>
+          </div>
+        </div>
+        <div class="card" style="overflow:auto;max-height:400px">
+          <div class="card-title" style="display:flex;align-items:center;justify-content:space-between">
+            Products <button class="btn-sm ghost" onclick="loadProducts()" style="padding:3px 8px;font-size:11px">Refresh</button>
+          </div>
+          <div class="products-list" id="productsList"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TENANTS ── -->
+    <div class="section" id="section-tenants">
+      <div><div class="page-title">Tenants</div><div class="page-sub">Multi-tenant management (admin only)</div></div>
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title">New tenant</div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <input class="inp" id="tenantName" placeholder="Acme Corp" />
+            <input class="inp" id="tenantSlug" placeholder="acme-corp (slug)" />
+            <select class="inp" id="tenantPlan">
+              <option value="free">Free</option>
+              <option value="pro">Pro</option>
+              <option value="enterprise">Enterprise</option>
+            </select>
+            <button class="btn-sm" onclick="createTenant()">Create tenant</button>
+          </div>
+        </div>
+        <div class="card" style="overflow:auto;max-height:400px">
+          <div class="card-title" style="display:flex;align-items:center;justify-content:space-between">
+            Tenants <button class="btn-sm ghost" onclick="loadTenants()" style="padding:3px 8px;font-size:11px">Refresh</button>
+          </div>
+          <div id="tenantsList" style="display:flex;flex-direction:column;gap:8px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── HEALTH ── -->
+    <div class="section" id="section-health">
+      <div><div class="page-title">Health</div><div class="page-sub">Service status checks</div></div>
+      <div class="card">
+        <div class="card-title" style="display:flex;align-items:center;justify-content:space-between">
+          Services <button class="btn-sm ghost" onclick="loadHealth()" style="padding:3px 8px;font-size:11px">Refresh</button>
+        </div>
+        <div class="health-grid" id="healthGrid"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Raw response</div>
+        <pre style="font-family:var(--font-mono);font-size:12px;color:var(--muted);background:var(--surface2);padding:12px;border-radius:8px;overflow:auto" id="healthRaw">Run health check above</pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── NEW ROOM MODAL ── -->
+<div class="modal-overlay" id="newRoomModal">
+  <div class="modal">
+    <h3>💬 New Chat Room</h3>
+    <input class="inp" id="newRoomName" placeholder="Room name (e.g. General)" />
+    <textarea class="inp" id="newRoomDesc" placeholder="Description (optional)" rows="2"></textarea>
+    <div class="modal-actions">
+      <button class="btn-sm ghost" onclick="closeModal('newRoomModal')">Cancel</button>
+      <button class="btn-sm" onclick="createRoom()">Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── TOAST ── -->
+<div id="toast"></div>
+
+<script>
+// ── Config ────────────────────────────────────────────────
+let BASE_URL = localStorage.getItem('baseUrl') || 'http://localhost:3000';
+document.getElementById('baseUrlInput').value = BASE_URL;
+
+let TOKEN = '';
+let ME = null;
+let socket = null;
+let activeRoomId = null;
+let isRegisterMode = false;
+let typingTimer = null;
+
+// ── Toast ─────────────────────────────────────────────────
+function toast(msg, type = 'ok') {
+  const el = document.createElement('div');
+  el.className = 'toast-msg ' + type;
+  el.textContent = msg;
+  document.getElementById('toast').appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+// ── API helper ────────────────────────────────────────────
+async function api(method, path, body) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (TOKEN) headers['Authorization'] = 'Bearer ' + TOKEN;
+  const res = await fetch(BASE_URL + path, {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const text = await res.text();
+  let json;
+  try { json = JSON.parse(text); } catch { json = { message: text }; }
+  if (!res.ok) throw new Error(json?.message || 'Request failed ' + res.status);
+  return json;
+}
+
+// ── Auth ──────────────────────────────────────────────────
+function toggleAuth() {
+  isRegisterMode = !isRegisterMode;
+  document.getElementById('registerNameFields').style.display = isRegisterMode ? '' : 'none';
+  document.getElementById('registerLastField').style.display = isRegisterMode ? '' : 'none';
+  document.getElementById('authBtn').textContent = isRegisterMode ? 'Register' : 'Login';
+  document.getElementById('authToggleText').textContent = isRegisterMode ? 'Already have an account?' : "Don't have an account?";
+  document.getElementById('authToggleLink').textContent = isRegisterMode ? 'Login' : 'Register';
+}
+
+async function submitAuth() {
+  const email = document.getElementById('authEmail').value.trim();
+  const password = document.getElementById('authPassword').value;
+  const errEl = document.getElementById('authError');
+  errEl.style.display = 'none';
+  document.getElementById('authBtn').textContent = '…';
+  try {
+    let data;
+    if (isRegisterMode) {
+      const resp = await api('POST', '/api/v1/auth/register', {
+        email,
+        password,
+        firstName: document.getElementById('authFirstName').value.trim() || 'User',
+        lastName: document.getElementById('authLastName').value.trim() || 'Name',
+      });
+      data = resp.data || resp;
+    } else {
+      const resp = await api('POST', '/api/v1/auth/login', { email, password });
+      data = resp.data || resp;
+    }
+    TOKEN = data.accessToken;
+    localStorage.setItem('token', TOKEN);
+    bootApp();
+  } catch (e) {
+    errEl.textContent = e.message;
+    errEl.style.display = 'block';
+  }
+  document.getElementById('authBtn').textContent = isRegisterMode ? 'Register' : 'Login';
+}
+
+function logout() {
+  TOKEN = '';
+  ME = null;
+  if (socket) { socket.disconnect(); socket = null; }
+  localStorage.removeItem('token');
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('auth').style.display = 'block';
+}
+
+// ── Boot ──────────────────────────────────────────────────
+async function bootApp() {
+  document.getElementById('auth').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  document.body.style.alignItems = '';
+  document.body.style.justifyContent = '';
+
+  try {
+    const resp = await api('GET', '/api/v1/users/me');
+    ME = resp.data || resp;
+    renderProfile();
+  } catch {}
+
+  connectSocket();
+  loadHealth();
+}
+
+// ── Sections ──────────────────────────────────────────────
+function showSection(name) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('section-' + name).classList.add('active');
+  document.querySelector(`[data-section="${name}"]`).classList.add('active');
+
+  if (name === 'chat') loadRooms();
+  if (name === 'products') loadProducts();
+  if (name === 'tenants') loadTenants();
+  if (name === 'health') loadHealth();
+}
+
+// ── Profile ───────────────────────────────────────────────
+function renderProfile() {
+  if (!ME) return;
+  const initials = ((ME.firstName||'?')[0] + (ME.lastName||'?')[0]).toUpperCase();
+  document.getElementById('profileAvatar').textContent = initials;
+  document.getElementById('profileName').textContent = `${ME.firstName || ''} ${ME.lastName || ''}`.trim() || '—';
+  document.getElementById('profileEmail').textContent = ME.email || '—';
+  document.getElementById('profileRole').textContent = ME.role?.name || 'No role';
+  const verified = ME.isEmailVerified;
+  document.getElementById('profileVerified').textContent = verified ? '✓ Verified' : '✗ Unverified';
+  document.getElementById('profileVerified').className = 'badge ' + (verified ? 'badge-green' : 'badge-yellow');
+  document.getElementById('profileProvider').textContent = ME.provider || 'local';
+  document.getElementById('profileLastLogin').textContent = ME.lastLoginAt ? new Date(ME.lastLoginAt).toLocaleString() : 'Never';
+  document.getElementById('profileToken').textContent = TOKEN;
+  document.getElementById('sidebarEmail').textContent = ME.email || '';
+  document.getElementById('updFirstName').value = ME.firstName || '';
+  document.getElementById('updLastName').value = ME.lastName || '';
+  document.getElementById('updPhone').value = ME.phone || '';
+}
+
+async function updateProfile() {
+  if (!ME) return;
+  try {
+    const resp = await api('PATCH', `/api/v1/users/${ME.id}`, {
+      firstName: document.getElementById('updFirstName').value,
+      lastName: document.getElementById('updLastName').value,
+      phone: document.getElementById('updPhone').value,
+    });
+    ME = { ...ME, ...(resp.data || resp) };
+    renderProfile();
+    toast('Profile updated!');
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+// ── Health ────────────────────────────────────────────────
+async function loadHealth() {
+  try {
+    const resp = await api('GET', '/health');
+    const data = resp.data || resp;
+    document.getElementById('healthRaw').textContent = JSON.stringify(data, null, 2);
+    const grid = document.getElementById('healthGrid');
+    grid.innerHTML = '';
+    const items = { Status: data.status, Database: data.database, ...data };
+    ['status', 'database'].forEach(key => {
+      if (data[key] === undefined) return;
+      const val = data[key];
+      const ok = val === 'ok' || val === 'up';
+      grid.innerHTML += `<div class="health-item"><div class="health-status"><span style="color:${ok?'var(--green)':'var(--red)'}">●</span>${key}</div><div class="badge ${ok?'badge-green':'badge-yellow'}" style="margin-top:4px">${val}</div></div>`;
+    });
+    if (grid.innerHTML === '') {
+      grid.innerHTML = `<div class="health-item"><div class="health-status"><span style="color:var(--green)">●</span>service</div><div class="badge badge-green" style="margin-top:4px">ok</div></div>`;
+    }
+    toast('Health OK');
+  } catch (e) { toast('Health check failed: ' + e.message, 'err'); }
+}
+
+// ── Socket ────────────────────────────────────────────────
+function connectSocket() {
+  if (socket) socket.disconnect();
+  socket = io(BASE_URL + '/chat', {
+    auth: { token: TOKEN },
+    transports: ['websocket'],
+  });
+  const dot = document.getElementById('chatDot');
+  socket.on('connect', () => { dot.className = 'conn-dot connected'; toast('Chat connected ✓'); });
+  socket.on('disconnect', () => { dot.className = 'conn-dot'; });
+  socket.on('connect_error', (e) => { dot.className = 'conn-dot'; });
+  socket.on('new_message', handleNewMessage);
+  socket.on('typing', handleTyping);
+  socket.on('history', handleHistory);
+  socket.on('error', (e) => toast(e.message || 'Socket error', 'err'));
+}
+
+// ── Chat ──────────────────────────────────────────────────
+let rooms = [];
+async function loadRooms() {
+  try {
+    const resp = await api('GET', '/api/v1/chat/rooms');
+    rooms = resp.data || resp || [];
+    renderRooms();
+  } catch (e) { toast('Load rooms: ' + e.message, 'err'); }
+}
+
+function renderRooms() {
+  const list = document.getElementById('roomsList');
+  list.innerHTML = '';
+  if (!rooms.length) {
+    list.innerHTML = '<div style="padding:12px;font-size:12px;color:var(--muted);text-align:center">No rooms yet</div>';
+    return;
+  }
+  rooms.forEach(r => {
+    const el = document.createElement('div');
+    el.className = 'room-item' + (r.id === activeRoomId ? ' active' : '');
+    el.innerHTML = `<div class="room-item-name">${r.name || 'Room'}</div><div class="room-item-last">${r.description || ''}</div>`;
+    el.onclick = () => joinRoom(r);
+    list.appendChild(el);
+  });
+}
+
+async function joinRoom(room) {
+  activeRoomId = room.id;
+  renderRooms();
+  renderChatMain(room);
+  if (socket?.connected) {
+    socket.emit('join_room', { roomId: room.id });
+    socket.emit('get_history', { roomId: room.id, limit: 50 });
+  }
+}
+
+function renderChatMain(room) {
+  document.getElementById('chatMain').innerHTML = `
+    <div class="chat-header">
+      <div>
+        <div class="chat-room-name"># ${room.name || 'Room'}</div>
+        <div class="chat-room-sub">${room.description || 'No description'}</div>
+      </div>
+    </div>
+    <div class="messages-area" id="messagesArea"></div>
+    <div class="typing-indicator" id="typingIndicator"></div>
+    <div class="chat-input-row">
+      <input class="chat-input" id="chatInput" placeholder="Type a message… (Enter to send)"
+        onkeydown="handleChatKey(event)" oninput="sendTyping(true)" />
+      <button class="btn-sm" onclick="sendMsg()">Send</button>
+    </div>
+  `;
+  document.getElementById('chatInput').focus();
+}
+
+function handleChatKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); }
+}
+
+function sendMsg() {
+  const input = document.getElementById('chatInput');
+  const content = input?.value?.trim();
+  if (!content || !activeRoomId || !socket?.connected) return;
+  socket.emit('send_message', { roomId: activeRoomId, content });
+  input.value = '';
+  sendTyping(false);
+}
+
+function handleNewMessage(msg) {
+  const area = document.getElementById('messagesArea');
+  if (!area || msg.roomId !== activeRoomId) return;
+  appendMessage(area, msg);
+  area.scrollTop = area.scrollHeight;
+}
+
+function handleHistory({ roomId, messages }) {
+  if (roomId !== activeRoomId) return;
+  const area = document.getElementById('messagesArea');
+  if (!area) return;
+  area.innerHTML = '';
+  (messages || []).reverse().forEach(m => appendMessage(area, m));
+  area.scrollTop = area.scrollHeight;
+}
+
+function appendMessage(area, msg) {
+  const isMine = ME && msg.senderId === ME.id;
+  const name = isMine ? 'You' : (msg.senderName || msg.senderId?.slice(0,8) || 'User');
+  const time = new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+  const el = document.createElement('div');
+  el.className = 'msg' + (isMine ? ' mine' : '');
+  el.innerHTML = `
+    <div class="msg-avatar">${name[0].toUpperCase()}</div>
+    <div class="msg-body">
+      <div class="msg-meta">${name} · ${time}</div>
+      <div class="msg-bubble">${escHtml(msg.content || '')}</div>
+    </div>`;
+  area.appendChild(el);
+}
+
+let typingTimeout = {};
+function handleTyping({ roomId, userId, isTyping }) {
+  if (roomId !== activeRoomId) return;
+  const el = document.getElementById('typingIndicator');
+  if (!el) return;
+  if (isTyping) {
+    el.textContent = 'Someone is typing…';
+    clearTimeout(typingTimeout[userId]);
+    typingTimeout[userId] = setTimeout(() => { el.textContent = ''; }, 3000);
+  } else {
+    el.textContent = '';
+  }
+}
+
+function sendTyping(isTyping) {
+  if (!socket?.connected || !activeRoomId) return;
+  clearTimeout(typingTimer);
+  socket.emit('typing', { roomId: activeRoomId, isTyping });
+  if (isTyping) typingTimer = setTimeout(() => sendTyping(false), 2000);
+}
+
+function openNewRoomModal() { document.getElementById('newRoomModal').classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+async function createRoom() {
+  const name = document.getElementById('newRoomName').value.trim();
+  const description = document.getElementById('newRoomDesc').value.trim();
+  if (!name) return toast('Room name required', 'err');
+  try {
+    await api('POST', '/api/v1/chat/rooms', { name, description });
+    closeModal('newRoomModal');
+    document.getElementById('newRoomName').value = '';
+    document.getElementById('newRoomDesc').value = '';
+    await loadRooms();
+    toast('Room created!');
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+// ── Products ──────────────────────────────────────────────
+async function loadProducts() {
+  try {
+    const resp = await api('GET', '/api/v1/products');
+    const products = resp.data?.items || resp.data || resp || [];
+    const list = document.getElementById('productsList');
+    if (!products.length) { list.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:8px 0">No products yet</div>'; return; }
+    list.innerHTML = products.map(p => `
+      <div class="product-row">
+        <div>
+          <div class="product-name">${escHtml(p.name)}</div>
+          <div style="font-size:11px;color:var(--muted)">${p.slug}</div>
+        </div>
+        <span class="product-price">$${p.price}</span>
+        <span class="badge ${p.status === 'active' ? 'badge-green' : p.status === 'draft' ? 'badge-yellow' : 'badge-blue'} product-status">${p.status}</span>
+        <button class="btn-sm danger" onclick="deleteProduct('${p.id}')">✕</button>
+      </div>`).join('');
+  } catch (e) { toast('Load products: ' + e.message, 'err'); }
+}
+
+async function createProduct() {
+  const name = document.getElementById('prodName').value.trim();
+  const slug = document.getElementById('prodSlug').value.trim() || name.toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'');
+  if (!name) return toast('Product name required', 'err');
+  try {
+    await api('POST', '/api/v1/products', {
+      name,
+      slug: slug || name,
+      price: parseFloat(document.getElementById('prodPrice').value) || 0,
+      stockQuantity: parseInt(document.getElementById('prodStock').value) || 0,
+      status: document.getElementById('prodStatus').value,
+      description: document.getElementById('prodDesc').value,
+    });
+    ['prodName','prodSlug','prodPrice','prodStock','prodDesc'].forEach(id => document.getElementById(id).value = '');
+    await loadProducts();
+    toast('Product created!');
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function deleteProduct(id) {
+  if (!confirm('Delete this product?')) return;
+  try {
+    await api('DELETE', `/api/v1/products/${id}`);
+    await loadProducts();
+    toast('Deleted');
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+// ── Tenants ───────────────────────────────────────────────
+async function loadTenants() {
+  try {
+    const resp = await api('GET', '/api/v1/tenants');
+    const tenants = resp.data || resp || [];
+    const list = document.getElementById('tenantsList');
+    if (!tenants.length) { list.innerHTML = '<div style="font-size:12px;color:var(--muted)">No tenants</div>'; return; }
+    list.innerHTML = tenants.map(t => `
+      <div class="product-row">
+        <div>
+          <div class="product-name">${escHtml(t.name)}</div>
+          <div style="font-size:11px;color:var(--muted)">${t.slug}</div>
+        </div>
+        <span class="badge ${t.plan==='enterprise'?'badge-purple':t.plan==='pro'?'badge-blue':'badge-yellow'}">${t.plan}</span>
+        <button class="btn-sm danger" onclick="deleteTenant('${t.id}')">✕</button>
+      </div>`).join('');
+  } catch (e) { toast('Tenants: ' + e.message, 'err'); }
+}
+
+async function createTenant() {
+  const name = document.getElementById('tenantName').value.trim();
+  const slug = document.getElementById('tenantSlug').value.trim();
+  const plan = document.getElementById('tenantPlan').value;
+  if (!name || !slug) return toast('Name and slug required', 'err');
+  try {
+    await api('POST', '/api/v1/tenants', { name, slug, plan });
+    document.getElementById('tenantName').value = '';
+    document.getElementById('tenantSlug').value = '';
+    await loadTenants();
+    toast('Tenant created!');
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function deleteTenant(id) {
+  if (!confirm('Delete tenant?')) return;
+  try {
+    await api('DELETE', `/api/v1/tenants/${id}`);
+    await loadTenants();
+    toast('Deleted');
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+// ── Utils ─────────────────────────────────────────────────
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Enter key on auth ─────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.getElementById('auth').style.display !== 'none') submitAuth();
+});
+
+// ── Init ──────────────────────────────────────────────────
+(function init() {
+  const saved = localStorage.getItem('token');
+  if (saved) { TOKEN = saved; bootApp(); }
+})();
+</script>
+</body>
+</html>
