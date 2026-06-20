@@ -8,6 +8,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { BullModule } from '@nestjs/bullmq';
 import { LoggerModule } from 'nestjs-pino';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { ClassSerializerInterceptor } from '@nestjs/common';
 
 import { envValidationSchema } from './config/env.validation';
 import { databaseConfig } from './config/database.config';
@@ -62,11 +63,27 @@ import { SeedModule } from './modules/seed/seed.module';
     CacheModule.registerAsync({
       isGlobal: true,
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        store: 'memory',    // Replace: require('cache-manager-ioredis') for Redis
-        ttl: config.get('REDIS_TTL', 3600),
-        max: 500,
-      }),
+      useFactory: async (config: ConfigService) => {
+        const host = config.get('REDIS_HOST', 'localhost');
+        const port = config.get<number>('REDIS_PORT', 6379);
+        const password = config.get<string>('REDIS_PASSWORD') || undefined;
+        const ttl = config.get<number>('REDIS_TTL', 3600) * 1000; // cache-manager v6 uses ms
+
+        // Try Redis; fall back to in-memory if Redis is not available
+        try {
+          const { redisStore } = await import('cache-manager-ioredis-yet');
+          const store = await redisStore({
+            host,
+            port,
+            password,
+            lazyConnect: true,
+            enableOfflineQueue: false,
+          });
+          return { store, ttl };
+        } catch {
+          return { store: 'memory', ttl, max: 500 };
+        }
+      },
     }),
 
     // ─── BullMQ (Redis required) ──────────────────────────────────────────────
@@ -143,6 +160,7 @@ import { SeedModule } from './modules/seed/seed.module';
     { provide: APP_GUARD, useClass: ThrottlerGuard }, // Rate limiting
 
     // ─── Global Interceptors ──────────────────────────────────────────────────
+    { provide: APP_INTERCEPTOR, useClass: ClassSerializerInterceptor },
     { provide: APP_INTERCEPTOR, useClass: LoggingInterceptor },
     { provide: APP_INTERCEPTOR, useClass: ResponseInterceptor },
 

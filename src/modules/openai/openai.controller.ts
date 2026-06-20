@@ -53,21 +53,30 @@ export class OpenAIController {
   }
 
   @Post('chat/stream')
-  @ApiOperation({ summary: 'Streaming chat completion (Server-Sent Events)' })
+  @ApiOperation({
+    summary: 'Streaming chat completion (Server-Sent Events via fetch)',
+    description:
+      'Returns an SSE stream. Use fetch() + ReadableStream on the client — NOT EventSource (which cannot send Authorization headers and only supports GET).',
+  })
   async chatStream(@Body() dto: ChatDto, @Res() res: Response) {
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
 
-    for await (const chunk of this.openaiService.chatStream(
-      [{ role: 'user', content: dto.message }],
-      { systemPrompt: dto.systemPrompt },
-    )) {
-      res.write(`data: ${JSON.stringify({ chunk })}\n\n`);
+    try {
+      for await (const chunk of this.openaiService.chatStream(
+        [{ role: 'user', content: dto.message }],
+        { systemPrompt: dto.systemPrompt },
+      )) {
+        if (res.destroyed) break;
+        res.write(`data: ${JSON.stringify({ chunk })}\n\n`);
+      }
+      res.write('data: [DONE]\n\n');
+    } catch (err) {
+      res.write(`data: ${JSON.stringify({ error: 'Stream error' })}\n\n`);
+    } finally {
+      res.end();
     }
-
-    res.write('data: [DONE]\n\n');
-    res.end();
   }
 
   @Post('image/generate')

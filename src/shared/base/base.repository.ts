@@ -30,33 +30,43 @@ export abstract class BaseRepository<T extends BaseEntity> {
     return r.save(entities as any);
   }
 
+  // Columns that may be used as sort keys — extend per-repository as needed
+  protected readonly allowedSortColumns: string[] = ['createdAt', 'updatedAt', 'id'];
+
   async findAll(
     params: PaginationDto,
     where?: FindOptionsWhere<T>,
     relations?: string[],
   ): Promise<FindAllResult<T>> {
-    const { page = 1, size = 10, sortBy = 'createdAt', sortOrder = 'DESC' } = params;
+    const { page = 1, size = 10, sortOrder = 'DESC' } = params;
+    const safePage = Math.max(1, page);
+    const safeSize = Math.min(100, Math.max(1, size));
+
+    // Whitelist sort column to prevent arbitrary column injection
+    const requestedSort = params.sortBy ?? 'createdAt';
+    const sortBy = this.allowedSortColumns.includes(requestedSort) ? requestedSort : 'createdAt';
+    const safeOrder = sortOrder === 'ASC' ? 'ASC' : 'DESC';
 
     const [data, totalElements] = await this.repo.findAndCount({
-      where: { ...(where || {}), isActive: true } as any,
+      where: where || ({} as any),
       relations,
-      order: { [sortBy]: sortOrder } as any,
-      skip: (page - 1) * size,
-      take: size,
+      order: { [sortBy]: safeOrder } as any,
+      skip: (safePage - 1) * safeSize,
+      take: safeSize,
     });
 
     return {
       data,
       totalElements,
-      totalPages: Math.ceil(totalElements / size),
-      page,
-      size,
+      totalPages: Math.ceil(totalElements / safeSize),
+      page: safePage,
+      size: safeSize,
     };
   }
 
   async findById(id: string, relations?: string[]): Promise<T> {
     const entity = await this.repo.findOne({
-      where: { id, isActive: true } as any,
+      where: { id } as any,
       relations,
     });
     if (!entity) throw new NotFoundException(`Resource with id ${id} not found`);

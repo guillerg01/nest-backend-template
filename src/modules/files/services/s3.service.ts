@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   S3Client,
@@ -26,14 +26,28 @@ export class S3Service {
   private readonly bucket: string;
 
   constructor(private readonly config: ConfigService) {
-    this.client = new S3Client({
-      region: config.get('AWS_REGION', 'us-east-1'),
-      credentials: {
-        accessKeyId: config.get('AWS_ACCESS_KEY_ID'),
-        secretAccessKey: config.get('AWS_SECRET_ACCESS_KEY'),
-      },
-    });
+    const accessKeyId = config.get<string>('AWS_ACCESS_KEY_ID');
+    const secretAccessKey = config.get<string>('AWS_SECRET_ACCESS_KEY');
     this.bucket = config.get('AWS_S3_BUCKET', 'my-app-bucket');
+
+    if (accessKeyId && secretAccessKey) {
+      this.client = new S3Client({
+        region: config.get('AWS_REGION', 'us-east-1'),
+        credentials: { accessKeyId, secretAccessKey },
+      });
+    }
+  }
+
+  get isConfigured(): boolean {
+    return !!this.client;
+  }
+
+  private ensureConfigured(): void {
+    if (!this.client) {
+      throw new ServiceUnavailableException(
+        'File storage not configured. Set AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and AWS_S3_BUCKET.',
+      );
+    }
   }
 
   // ─── Upload ───────────────────────────────────────────────────────────────
@@ -48,6 +62,7 @@ export class S3Service {
       metadata?: Record<string, string>;
     } = {},
   ): Promise<UploadResult> {
+    this.ensureConfigured();
     const { contentType = 'application/octet-stream', folder = 'uploads', isPublic = false, metadata } = options;
 
     const ext = path.extname(filename);
@@ -84,6 +99,7 @@ export class S3Service {
   // ─── Presigned URLs ───────────────────────────────────────────────────────
 
   async getPresignedUrl(key: string, expiresIn = 3600): Promise<string> {
+    this.ensureConfigured();
     return getSignedUrl(
       this.client,
       new GetObjectCommand({ Bucket: this.bucket, Key: key }),
@@ -96,6 +112,7 @@ export class S3Service {
     contentType: string,
     expiresIn = 3600,
   ): Promise<string> {
+    this.ensureConfigured();
     return getSignedUrl(
       this.client,
       new PutObjectCommand({ Bucket: this.bucket, Key: key, ContentType: contentType }),
@@ -106,6 +123,7 @@ export class S3Service {
   // ─── Delete ───────────────────────────────────────────────────────────────
 
   async delete(key: string): Promise<void> {
+    this.ensureConfigured();
     await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: key }));
     this.logger.log(`Deleted: ${key}`);
   }
@@ -113,6 +131,7 @@ export class S3Service {
   // ─── List ─────────────────────────────────────────────────────────────────
 
   async list(prefix = '', maxKeys = 100): Promise<{ key: string; size: number; lastModified: Date }[]> {
+    this.ensureConfigured();
     const response = await this.client.send(
       new ListObjectsV2Command({ Bucket: this.bucket, Prefix: prefix, MaxKeys: maxKeys }),
     );

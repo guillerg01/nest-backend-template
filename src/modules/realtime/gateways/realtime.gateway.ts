@@ -8,7 +8,7 @@ import {
   WebSocketGateway,
   WebSocketServer,
 } from '@nestjs/websockets';
-import { Logger } from '@nestjs/common';
+import { Logger, UsePipes, ValidationPipe } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -19,9 +19,15 @@ interface ConnectedUser {
   connectedAt: Date;
 }
 
+@UsePipes(new ValidationPipe({ whitelist: true, transform: true, forbidNonWhitelisted: true }))
 @WebSocketGateway({
   namespace: '/realtime',
-  cors: { origin: '*', credentials: true },
+  cors: {
+    origin: process.env.FRONTEND_URL
+      ? [process.env.FRONTEND_URL, 'http://localhost:3001', 'http://localhost:3000']
+      : ['http://localhost:3001', 'http://localhost:3000'],
+    credentials: true,
+  },
 })
 export class RealtimeGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect

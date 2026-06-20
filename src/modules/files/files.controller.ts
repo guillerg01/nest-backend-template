@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Controller,
   Delete,
   Get,
@@ -30,11 +31,16 @@ export class FilesController {
     FileInterceptor('file', {
       limits: { fileSize: MAX_SIZE },
       fileFilter: (_, file, cb) => {
-        cb(null, ALLOWED_MIME.includes(file.mimetype));
+        if (!file) return cb(new BadRequestException('No file provided'), false);
+        if (!ALLOWED_MIME.includes(file.mimetype)) {
+          return cb(new BadRequestException(`File type not allowed: ${file.mimetype}`), false);
+        }
+        cb(null, true);
       },
     }),
   )
   uploadFile(@UploadedFile() file: Express.Multer.File, @Query('folder') folder = 'uploads') {
+    if (!file) throw new BadRequestException('File is required');
     return this.s3Service.uploadMulter(file, folder);
   }
 
@@ -60,14 +66,14 @@ export class FilesController {
   }
 
   @Get()
-  @Permissions('files.read')
+  @Permissions('files:read')
   @ApiOperation({ summary: 'List files in a folder' })
   list(@Query('prefix') prefix = 'uploads/') {
     return this.s3Service.list(prefix);
   }
 
   @Delete(':key')
-  @Permissions('files.delete')
+  @Permissions('files:delete')
   @ApiOperation({ summary: 'Delete file from S3' })
   delete(@Param('key') key: string) {
     return this.s3Service.delete(decodeURIComponent(key));

@@ -32,8 +32,10 @@ export class WalletService {
     return crypto.createHash('sha256').update(data).digest();
   }
 
-  keccak256(data: string): string {
-    // Native keccak256 — for full Ethereum compat use ethers.js
+  // NOTE: Node's sha3-256 uses NIST padding, NOT the Keccak padding used by Ethereum.
+  // This is NOT compatible with Ethereum's keccak256. For on-chain usage, install
+  // ethers.js (ethers.keccak256) or viem (keccak256). See crypto/README.md.
+  keccak256Sha3(data: string): string {
     return crypto.createHash('sha3-256').update(data).digest('hex');
   }
 

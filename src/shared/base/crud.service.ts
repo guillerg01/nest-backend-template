@@ -42,7 +42,6 @@ export abstract class CrudService<
   }
 
   async update(id: string, data: DeepPartial<TEntity>): Promise<TDto> {
-    await this.repo.findById(id); // ensure exists
     const entity = await this.repo.update(id, data);
     return this.toDto(entity);
   }

@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios, { AxiosRequestConfig } from 'axios';
 import * as cheerio from 'cheerio';
@@ -38,9 +38,35 @@ export class ScrapingService {
     private readonly retryService: RetryService,
   ) {}
 
+  // ─── SSRF block list ─────────────────────────────────────────────────────
+
+  private readonly BLOCKED_HOSTS = [
+    'localhost', '127.0.0.1', '0.0.0.0', '::1',
+    '169.254.169.254', // AWS/GCP/Azure metadata
+    '100.100.100.200', // Alibaba metadata
+    'metadata.google.internal',
+  ];
+
+  private assertSafeUrl(url: string): void {
+    let hostname: string;
+    try {
+      hostname = new URL(url).hostname.toLowerCase();
+    } catch {
+      throw new BadRequestException(`Invalid URL: ${url}`);
+    }
+    if (this.BLOCKED_HOSTS.some((h) => hostname === h || hostname.endsWith(`.${h}`))) {
+      throw new BadRequestException(`URL not allowed: ${url}`);
+    }
+    // Block private RFC-1918 ranges by hostname pattern (basic guard)
+    if (/^10\.|^172\.(1[6-9]|2\d|3[01])\.|^192\.168\./.test(hostname)) {
+      throw new BadRequestException(`Private network URLs not allowed: ${url}`);
+    }
+  }
+
   // ─── Core HTTP Fetch ─────────────────────────────────────────────────────
 
   async fetchPage(options: ScrapeOptions): Promise<ScrapeResult> {
+    this.assertSafeUrl(options.url);
     const { url, headers = {}, proxy, timeout = 15000 } = options;
 
     const axiosConfig: AxiosRequestConfig = {

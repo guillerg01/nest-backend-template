@@ -21,10 +21,15 @@ export class SeedController {
 
   @Post()
   @Public()
-  @ApiOperation({ summary: 'Seed DB with roles, permissions and admin user' })
+  @ApiOperation({ summary: 'Seed DB with roles, permissions and admin user (dev only)' })
   async seed(@Headers('x-seed-secret') secret: string) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new ForbiddenException('Seed endpoint is disabled in production');
+    }
     const expected = this.config.get<string>('SEED_SECRET');
-    if (expected && secret !== expected) throw new ForbiddenException('Invalid seed secret');
+    if (!expected || secret !== expected) {
+      throw new ForbiddenException('Invalid or missing seed secret');
+    }
     if (await this.seedService.isSeeded()) return { message: 'Already seeded', created: [] };
     return this.seedService.seed();
   }

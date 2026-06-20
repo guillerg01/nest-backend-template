@@ -98,6 +98,7 @@ export class QueueService {
       [QUEUES.SCRAPING]: this.scrapingQueue,
       [QUEUES.EXPORTS]: this.exportsQueue,
       [QUEUES.AI_PROCESSING]: this.aiQueue,
+      [QUEUES.NOTIFICATIONS]: this.notificationsQueue,
     };
 
     const queue = queues[queueName];
@@ -125,6 +126,7 @@ export class QueueService {
       [QUEUES.SCRAPING]: this.scrapingQueue,
       [QUEUES.EXPORTS]: this.exportsQueue,
       [QUEUES.AI_PROCESSING]: this.aiQueue,
+      [QUEUES.NOTIFICATIONS]: this.notificationsQueue,
     };
 
     const queue = queues[queueName];

@@ -1,13 +1,11 @@
 import {
   ForbiddenException,
   Injectable,
-  NotFoundException,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { MessageRepository, RoomRepository } from './repositories/chat.repository';
 import { RoomEntity, RoomType } from './entities/room.entity';
 import { MessageEntity, MessageType } from './entities/message.entity';
+import { UserEntity } from '../users/entities/user.entity';
 
 export interface CreateRoomDto {
   name?: string;
@@ -41,13 +39,16 @@ export class ChatService {
       if (existing) return existing;
     }
 
-    const room = await this.roomRepo.create({
-      name: dto.name,
-      type: dto.type ?? RoomType.GROUP,
-      isPublic: dto.isPublic ?? false,
-      createdBy: creatorId,
-      memberCount: memberIds.length,
-    });
+    const room = await this.roomRepo.createWithMembers(
+      {
+        name: dto.name,
+        type: dto.type ?? RoomType.GROUP,
+        isPublic: dto.isPublic ?? false,
+        createdBy: creatorId,
+        memberCount: memberIds.length,
+      },
+      memberIds,
+    );
 
     return room;
   }

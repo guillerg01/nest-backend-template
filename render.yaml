@@ -11,15 +11,22 @@ services:
         value: production
       - key: PORT
         value: 3000
-      # Copy these from your .env.example and set values in Render dashboard:
+      # Render auto-injects DATABASE_URL from linked Postgres service
+      # The app reads it automatically — no need to set DB_HOST/DB_USER/etc separately
       - key: DATABASE_URL
-        sync: false
+        fromDatabase:
+          name: nest-backend-postgres
+          property: connectionString
+      # Render auto-injects REDIS_URL from linked Redis service
       - key: REDIS_URL
         sync: false
       - key: JWT_SECRET
         generateValue: true
       - key: JWT_REFRESH_SECRET
         generateValue: true
+      # Set these in Render dashboard → Environment:
+      # STRIPE_SECRET_KEY, OPENAI_API_KEY, AWS_*, SMTP_*, SENTRY_DSN
+      # SEED_SECRET (required to call /api/v1/seed, disabled in production anyway)
 
 databases:
   - name: nest-backend-postgres
@@ -27,4 +34,4 @@ databases:
     databaseName: nest_backend
     user: nest_backend
 
-  # Redis: add manually in Render dashboard → New Redis → link via REDIS_URL
+  # Redis: Render dashboard → New → Redis → link to this service via REDIS_URL

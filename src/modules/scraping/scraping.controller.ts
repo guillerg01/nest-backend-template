@@ -22,7 +22,7 @@ export class ScrapingController {
   constructor(private readonly scrapingService: ScrapingService) {}
 
   @Post('fetch')
-  @Permissions('scraping.execute')
+  @Permissions('scraping:execute')
   @ApiOperation({ summary: 'Fetch and parse a URL' })
   async fetchUrl(@Body() dto: ScrapeUrlDto) {
     const result = await this.scrapingService.fetchPage({
@@ -43,7 +43,7 @@ export class ScrapingController {
   }
 
   @Post('table')
-  @Permissions('scraping.execute')
+  @Permissions('scraping:execute')
   @ApiOperation({ summary: 'Extract table data from a URL' })
   async extractTable(@Body() dto: ScrapeUrlDto & { tableSelector?: string }) {
     const result = await this.scrapingService.fetchPage({ url: dto.url });

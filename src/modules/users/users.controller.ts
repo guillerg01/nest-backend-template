@@ -28,14 +28,14 @@ export class UsersController {
   }
 
   @Get()
-  @Permissions('users.read')
+  @Permissions('users:read')
   @ApiOperation({ summary: 'List all users (paginated)' })
   findAll(@Query() params: PaginationDto) {
     return this.usersService.findAll(params);
   }
 
   @Get(':id')
-  @Permissions('users.read')
+  @Permissions('users:read')
   @ApiOperation({ summary: 'Get user by ID' })
   findOne(@Param('id') id: string) {
     return this.usersService.findById(id);
@@ -53,7 +53,7 @@ export class UsersController {
   }
 
   @Delete(':id')
-  @Permissions('users.delete')
+  @Permissions('users:delete')
   @ApiOperation({ summary: 'Soft-delete user' })
   remove(@Param('id') id: string) {
     return this.usersService.remove(id);

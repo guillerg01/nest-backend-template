@@ -11,11 +11,13 @@ export const envValidationSchema = Joi.object({
   JWT_REFRESH_SECRET: Joi.string().required(),
   JWT_REFRESH_EXPIRES_IN: Joi.string().default('7d'),
 
-  DB_HOST: Joi.string().required(),
+  // Either DATABASE_URL (Render/Railway/Heroku) or individual DB_* vars are required
+  DATABASE_URL: Joi.string().allow('').optional(),
+  DB_HOST: Joi.when('DATABASE_URL', { is: Joi.exist().not(''), then: Joi.optional(), otherwise: Joi.string().required() }),
   DB_PORT: Joi.number().default(5432),
-  DB_USER: Joi.string().required(),
-  DB_PASSWORD: Joi.string().required(),
-  DB_NAME: Joi.string().required(),
+  DB_USER: Joi.when('DATABASE_URL', { is: Joi.exist().not(''), then: Joi.optional(), otherwise: Joi.string().required() }),
+  DB_PASSWORD: Joi.when('DATABASE_URL', { is: Joi.exist().not(''), then: Joi.optional(), otherwise: Joi.string().required() }),
+  DB_NAME: Joi.when('DATABASE_URL', { is: Joi.exist().not(''), then: Joi.optional(), otherwise: Joi.string().required() }),
   DB_SYNC: Joi.boolean().default(false),
   DB_MIGRATIONS_RUN: Joi.boolean().default(false),
 
@@ -38,4 +40,22 @@ export const envValidationSchema = Joi.object({
   SMTP_USER: Joi.string().allow('').optional(),
   SMTP_PASS: Joi.string().allow('').optional(),
   EMAIL_FROM: Joi.string().allow('').optional(),
+
+  // Seed (dev only)
+  SEED_SECRET: Joi.string().allow('').optional(),
+  SEED_ADMIN_PASSWORD: Joi.string().allow('').optional(),
+
+  // Optional integrations
+  AWS_REGION: Joi.string().allow('').optional(),
+  AWS_ACCESS_KEY_ID: Joi.string().allow('').optional(),
+  AWS_SECRET_ACCESS_KEY: Joi.string().allow('').optional(),
+  AWS_S3_BUCKET: Joi.string().allow('').optional(),
+  OPENAI_API_KEY: Joi.string().allow('').optional(),
+  SENTRY_DSN: Joi.string().allow('').optional(),
+  EVM_RPC_URL: Joi.string().allow('').optional(),
+  SOLANA_RPC_URL: Joi.string().allow('').optional(),
+  SCRAPING_CONCURRENCY: Joi.number().optional(),
+  SCRAPING_DELAY_MS: Joi.number().optional(),
+  LOG_LEVEL: Joi.string().valid('debug', 'info', 'warn', 'error').optional(),
+  APP_VERSION: Joi.string().allow('').optional(),
 });

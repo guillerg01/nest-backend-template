@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
+import { ConfigService } from '@nestjs/config';
 import { PermissionEntity } from '../security/entities/permission.entity';
 import { RoleEntity } from '../security/entities/role.entity';
 import { UserEntity, UserProvider } from '../users/entities/user.entity';
@@ -24,6 +25,7 @@ const PERMISSIONS = [
   { name: 'chat:read',        module: 'chat',     description: 'Read chat messages' },
   { name: 'chat:write',       module: 'chat',     description: 'Send chat messages' },
   { name: 'openai:use',       module: 'openai',   description: 'Use AI features' },
+  { name: 'scraping:execute', module: 'scraping', description: 'Execute scraping tasks' },
   { name: 'admin:all',        module: 'admin',    description: 'Full admin access' },
 ];
 
@@ -35,6 +37,7 @@ export class SeedService {
     @InjectRepository(PermissionEntity) private readonly permRepo: Repository<PermissionEntity>,
     @InjectRepository(RoleEntity)       private readonly roleRepo: Repository<RoleEntity>,
     @InjectRepository(UserEntity)       private readonly userRepo: Repository<UserEntity>,
+    private readonly config: ConfigService,
   ) {}
 
   async isSeeded(): Promise<boolean> {
@@ -85,7 +88,8 @@ export class SeedService {
     // ── Admin user ────────────────────────────────────────────────
     const existing = await this.userRepo.findOne({ where: { email: 'admin@example.com' } });
     if (!existing) {
-      const hash = await bcrypt.hash('Admin1234!', 10);
+      const adminPassword = this.config.get<string>('SEED_ADMIN_PASSWORD', 'Admin1234!');
+      const hash = await bcrypt.hash(adminPassword, 10);
       await this.userRepo.save(
         this.userRepo.create({
           email: 'admin@example.com',

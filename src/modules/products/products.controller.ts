@@ -44,7 +44,7 @@ export class ProductsController {
   }
 
   @Get('admin/all')
-  @Permissions('products.read')
+  @Permissions('products:read')
   @ApiOperation({ summary: 'List all products (admin, includes drafts)' })
   findAllAdmin(@Query() params: PaginationDto) {
     return this.productsService.findAll(params);
@@ -69,7 +69,7 @@ export class ProductsController {
   }
 
   @Delete(':id')
-  @Permissions('products.delete')
+  @Permissions('products:delete')
   @ApiOperation({ summary: 'Soft-delete product' })
   remove(@Param('id') id: string) {
     return this.productsService.remove(id);

@@ -11,6 +11,7 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
+import { UsersService } from '../users/users.service';
 import { CreateUserDto } from '../users/dto/create-user.dto';
 import {
   AuthResponseDto,
@@ -25,7 +26,10 @@ import { CurrentUser } from '../../shared/decorators/current-user.decorator';
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly usersService: UsersService,
+  ) {}
 
   @Public()
   @Post('register')
@@ -85,9 +89,16 @@ export class AuthController {
     return this.authService.googleLogin(req.user);
   }
 
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Revoke refresh token (invalidate session)' })
+  logout(@Body() dto: RefreshTokenDto) {
+    return this.authService.revokeRefreshToken(dto.refreshToken);
+  }
+
   @Get('me')
   @ApiOperation({ summary: 'Get current user from token' })
-  getMe(@CurrentUser() user: any) {
-    return user;
+  getMe(@CurrentUser('id') userId: string) {
+    return this.usersService.getMe(userId);
   }
 }

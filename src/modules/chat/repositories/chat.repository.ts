@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DeepPartial, Repository } from 'typeorm';
 import { BaseRepository } from '../../../shared/base/base.repository';
 import { MessageEntity } from '../entities/message.entity';
 import { RoomEntity } from '../entities/room.entity';
@@ -80,6 +80,13 @@ export class RoomRepository extends BaseRepository<RoomEntity> {
     private readonly roomRepo: Repository<RoomEntity>,
   ) {
     super(roomRepo);
+  }
+
+  async createWithMembers(data: DeepPartial<RoomEntity>, memberIds: string[]): Promise<RoomEntity> {
+    const room = this.roomRepo.create(data);
+    // Assign by reference so TypeORM inserts into chat_room_members join table
+    room.members = memberIds.map((id) => ({ id }) as any);
+    return this.roomRepo.save(room);
   }
 
   async findUserRooms(userId: string): Promise<RoomEntity[]> {

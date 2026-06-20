@@ -1,16 +1,20 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
 import * as bcrypt from 'bcryptjs';
 import { nanoid } from 'nanoid';
 import { UsersService } from '../users/users.service';
 import { UserRepository } from '../users/repositories/user.repository';
 import { UserEntity, UserProvider } from '../users/entities/user.entity';
 import { CreateUserDto } from '../users/dto/create-user.dto';
+import { UserDto } from '../users/dto/user.dto';
 import {
   AuthResponseDto,
   ForgotPasswordDto,
@@ -24,6 +28,7 @@ export class AuthService {
     private readonly userRepo: UserRepository,
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
+    @Inject(CACHE_MANAGER) private readonly cache: Cache,
   ) {}
 
   async validateUser(email: string, password: string): Promise<UserEntity | null> {
@@ -36,7 +41,7 @@ export class AuthService {
   async login(user: UserEntity): Promise<AuthResponseDto> {
     await this.userRepo.update(user.id, { lastLoginAt: new Date() });
     const tokens = await this.generateTokens(user);
-    return { ...tokens, user: new (await import('../users/dto/user.dto')).UserDto().fromEntity(user) };
+    return { ...tokens, user: new UserDto().fromEntity(user) };
   }
 
   async register(dto: CreateUserDto): Promise<AuthResponseDto> {
@@ -70,16 +75,37 @@ export class AuthService {
   }
 
   async refreshTokens(refreshToken: string): Promise<AuthResponseDto> {
+    let payload: { sub: string; email: string; jti: string };
     try {
-      const payload = this.jwtService.verify(refreshToken, {
+      payload = this.jwtService.verify(refreshToken, {
         secret: this.config.get('JWT_REFRESH_SECRET'),
       });
-      const user = await this.userRepo.findOne({ id: payload.sub });
-      if (!user) throw new UnauthorizedException();
-      return this.login(user);
     } catch {
       throw new UnauthorizedException('Invalid refresh token');
     }
+
+    const cacheKey = `rt:${payload.sub}:${payload.jti}`;
+    const stored = await this.cache.get(cacheKey);
+    if (!stored) throw new UnauthorizedException('Refresh token revoked or expired');
+
+    // Rotate: invalidate current token immediately
+    await this.cache.del(cacheKey);
+
+    const user = await this.userRepo.findOne({ id: payload.sub });
+    if (!user) throw new UnauthorizedException();
+    return this.login(user);
+  }
+
+  async revokeRefreshToken(refreshToken: string): Promise<{ message: string }> {
+    try {
+      const payload = this.jwtService.verify<{ sub: string; jti: string }>(refreshToken, {
+        secret: this.config.get('JWT_REFRESH_SECRET'),
+      });
+      await this.cache.del(`rt:${payload.sub}:${payload.jti}`);
+    } catch {
+      // Expired or invalid token — treat as already revoked
+    }
+    return { message: 'Logged out' };
   }
 
   async forgotPassword(dto: ForgotPasswordDto): Promise<{ message: string }> {
@@ -117,19 +143,34 @@ export class AuthService {
   }
 
   private async generateTokens(user: UserEntity) {
-    const payload = { sub: user.id, email: user.email };
+    const basePayload = { sub: user.id, email: user.email };
+    const jti = nanoid(21);
+    const refreshExpiresIn = this.config.get('JWT_REFRESH_EXPIRES_IN') || '7d';
 
     const [accessToken, refreshToken] = await Promise.all([
-      this.jwtService.signAsync(payload, {
+      this.jwtService.signAsync(basePayload, {
         secret: this.config.get('JWT_SECRET'),
         expiresIn: this.config.get('JWT_EXPIRES_IN') || '1d',
       }),
-      this.jwtService.signAsync(payload, {
+      this.jwtService.signAsync({ ...basePayload, jti }, {
         secret: this.config.get('JWT_REFRESH_SECRET'),
-        expiresIn: this.config.get('JWT_REFRESH_EXPIRES_IN') || '7d',
+        expiresIn: refreshExpiresIn,
       }),
     ]);
 
+    // Store jti in Redis so we can revoke it on logout or rotation
+    const ttlSeconds = this.parseDurationToSeconds(refreshExpiresIn);
+    await this.cache.set(`rt:${user.id}:${jti}`, '1', ttlSeconds * 1000);
+
     return { accessToken, refreshToken };
+  }
+
+  private parseDurationToSeconds(duration: string): number {
+    const match = duration.match(/^(\d+)([smhd])$/);
+    if (!match) return 7 * 24 * 3600;
+    const value = parseInt(match[1]);
+    const unit = match[2];
+    const multipliers: Record<string, number> = { s: 1, m: 60, h: 3600, d: 86400 };
+    return value * (multipliers[unit] ?? 86400);
   }
 }

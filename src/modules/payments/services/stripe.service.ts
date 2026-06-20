@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Stripe from 'stripe';
 
@@ -33,9 +33,22 @@ export class StripeService {
     }
   }
 
+  get isConfigured(): boolean {
+    return !!this.stripe;
+  }
+
+  private ensureConfigured(): void {
+    if (!this.stripe) {
+      throw new ServiceUnavailableException(
+        'Payment service not configured. Set STRIPE_SECRET_KEY environment variable.',
+      );
+    }
+  }
+
   // ─── Customers ──────────────────────────────────────────────────────────
 
   async createCustomer(email: string, name: string): Promise<Stripe.Customer> {
+    this.ensureConfigured();
     return this.stripe.customers.create({ email, name });
   }
 
@@ -44,6 +57,7 @@ export class StripeService {
     name: string,
     existingId?: string,
   ): Promise<Stripe.Customer> {
+    this.ensureConfigured();
     if (existingId) {
       return this.stripe.customers.retrieve(existingId) as Promise<Stripe.Customer>;
     }
@@ -53,6 +67,7 @@ export class StripeService {
   // ─── Checkout Sessions ───────────────────────────────────────────────────
 
   async createSubscriptionCheckout(params: CreateCheckoutParams): Promise<Stripe.Checkout.Session> {
+    this.ensureConfigured();
     return this.stripe.checkout.sessions.create({
       mode: 'subscription',
       customer: params.customerId,
@@ -71,6 +86,7 @@ export class StripeService {
   }
 
   async createOneTimeCheckout(params: CreateOneTimePaymentParams): Promise<Stripe.Checkout.Session> {
+    this.ensureConfigured();
     return this.stripe.checkout.sessions.create({
       mode: 'payment',
       customer: params.customerId,
@@ -94,10 +110,12 @@ export class StripeService {
   // ─── Subscriptions ───────────────────────────────────────────────────────
 
   async cancelSubscription(subscriptionId: string): Promise<Stripe.Subscription> {
+    this.ensureConfigured();
     return this.stripe.subscriptions.cancel(subscriptionId);
   }
 
   async getSubscription(subscriptionId: string): Promise<Stripe.Subscription> {
+    this.ensureConfigured();
     return this.stripe.subscriptions.retrieve(subscriptionId);
   }
 
@@ -109,6 +127,7 @@ export class StripeService {
     customerId?: string,
     metadata?: Record<string, string>,
   ): Promise<Stripe.PaymentIntent> {
+    this.ensureConfigured();
     return this.stripe.paymentIntents.create({
       amount,
       currency,
@@ -121,6 +140,7 @@ export class StripeService {
   // ─── Webhooks ────────────────────────────────────────────────────────────
 
   constructWebhookEvent(payload: Buffer, signature: string): Stripe.Event {
+    this.ensureConfigured();
     const secret = this.config.get<string>('STRIPE_WEBHOOK_SECRET');
     try {
       return this.stripe.webhooks.constructEvent(payload, signature, secret);
@@ -133,17 +153,20 @@ export class StripeService {
   // ─── Prices & Products ───────────────────────────────────────────────────
 
   async listPrices(): Promise<Stripe.Price[]> {
+    this.ensureConfigured();
     const { data } = await this.stripe.prices.list({ active: true, expand: ['data.product'] });
     return data;
   }
 
   async getPrice(priceId: string): Promise<Stripe.Price> {
+    this.ensureConfigured();
     return this.stripe.prices.retrieve(priceId, { expand: ['product'] });
   }
 
   // ─── Refunds ─────────────────────────────────────────────────────────────
 
   async createRefund(paymentIntentId: string, amount?: number): Promise<Stripe.Refund> {
+    this.ensureConfigured();
     return this.stripe.refunds.create({
       payment_intent: paymentIntentId,
       amount,

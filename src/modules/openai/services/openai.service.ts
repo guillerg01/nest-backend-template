@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
 
@@ -36,12 +36,25 @@ export class OpenAIService {
     }
   }
 
+  get isConfigured(): boolean {
+    return !!this.client;
+  }
+
+  private ensureConfigured(): void {
+    if (!this.client) {
+      throw new ServiceUnavailableException(
+        'AI service not configured. Set OPENAI_API_KEY environment variable.',
+      );
+    }
+  }
+
   // ─── Chat Completions ─────────────────────────────────────────────────────
 
   async chat(
     messages: ChatMessage[],
     options: CompletionOptions = {},
   ): Promise<string> {
+    this.ensureConfigured();
     const {
       model = 'gpt-4o-mini',
       temperature = 0.7,
@@ -88,6 +101,7 @@ export class OpenAIService {
     messages: ChatMessage[],
     options: CompletionOptions = {},
   ): AsyncGenerator<string> {
+    this.ensureConfigured();
     const { model = 'gpt-4o-mini', temperature = 0.7, systemPrompt } = options;
 
     const allMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
@@ -111,6 +125,7 @@ export class OpenAIService {
   // ─── Embeddings ───────────────────────────────────────────────────────────
 
   async embed(text: string, options: EmbeddingOptions = {}): Promise<number[]> {
+    this.ensureConfigured();
     const { model = 'text-embedding-3-small' } = options;
 
     const response = await this.client.embeddings.create({
@@ -122,6 +137,7 @@ export class OpenAIService {
   }
 
   async embedMany(texts: string[], options: EmbeddingOptions = {}): Promise<number[][]> {
+    this.ensureConfigured();
     const { model = 'text-embedding-3-small' } = options;
 
     const response = await this.client.embeddings.create({
@@ -145,6 +161,7 @@ export class OpenAIService {
     prompt: string,
     options: { size?: '256x256' | '512x512' | '1024x1024' | '1792x1024' | '1024x1792'; quality?: 'standard' | 'hd'; n?: number } = {},
   ): Promise<string[]> {
+    this.ensureConfigured();
     const { size = '1024x1024', quality = 'standard', n = 1 } = options;
 
     const response = await this.client.images.generate({
@@ -161,6 +178,7 @@ export class OpenAIService {
   // ─── Vision (Image Analysis) ──────────────────────────────────────────────
 
   async analyzeImage(imageUrl: string, prompt: string): Promise<string> {
+    this.ensureConfigured();
     const response = await this.client.chat.completions.create({
       model: 'gpt-4o',
       messages: [
@@ -181,6 +199,7 @@ export class OpenAIService {
   // ─── Audio Transcription ──────────────────────────────────────────────────
 
   async transcribe(audioBuffer: Buffer, filename: string, options: TranscriptionOptions = {}): Promise<string> {
+    this.ensureConfigured();
     const file = new File([audioBuffer as unknown as ArrayBuffer], filename, { type: 'audio/mpeg' });
 
     const response = await this.client.audio.transcriptions.create({
@@ -199,6 +218,7 @@ export class OpenAIService {
     text: string,
     options: { voice?: 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer'; speed?: number } = {},
   ): Promise<Buffer> {
+    this.ensureConfigured();
     const { voice = 'nova', speed = 1.0 } = options;
 
     const response = await this.client.audio.speech.create({
@@ -219,6 +239,7 @@ export class OpenAIService {
     schema: string,
     systemPrompt?: string,
   ): Promise<T> {
+    this.ensureConfigured();
     const response = await this.client.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
@@ -237,6 +258,7 @@ export class OpenAIService {
   // ─── Moderation ───────────────────────────────────────────────────────────
 
   async moderate(text: string): Promise<{ flagged: boolean; categories: Record<string, boolean> }> {
+    this.ensureConfigured();
     const response = await this.client.moderations.create({ input: text });
     const result = response.results[0];
     return {
